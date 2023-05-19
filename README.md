@@ -1,3 +1,6 @@
+### SSH Public Key:
+### ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCq8xmXKlHLvM3EZbAEfkaUpx1KtGvyk90WoXKBLGRxBxPQg3CwwHj2VLo7Lgwvjgb07se6XGDF4bEo6kSGXlPaDc6Kz+La7qDEywALJB6mLJNINu0erWqjs9+QabZyc/ouWrc1lTc269HiE6vLfORSoZKt1q8lYXX7HYLRQiqEzMzMswuNDnHQzl2NLMKwgAxWoaKRkV1+aaiae3OBJDxpuwgSoychG8I7w7SBSg2XQdAkJGFueMN9vIR8TxbMJsgGWz4ILd2HVK5JR4Ks8zFFK1ZTpnoJHFx7TETRNxldMNSKkElTohTWRSdPTlgKvERAUmaIKrtHwteXsnuGMYFj
+
 # K8s-iam-operator
 A Python-based Kubernetes Operator using the Kopf library to manage Roles, ClusterRoles, Groups, and Users.
 
@@ -94,6 +97,7 @@ kubectl apply -f operator-deployment.yaml
 To use the operator follow these steps:
 1. Create the [CRDs](k8s-iam-operator/crd/):
 ```shell
+kubectl apply -f crd/rbac.yaml
 kubectl apply -f crd/group_crd.yaml
 kubectl apply -f crd/roles_crd.yaml
 kubectl apply -f crd/users_crd.yaml

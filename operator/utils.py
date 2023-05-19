@@ -2,14 +2,6 @@ from kubernetes import client, config
 from kubernetes.client import ApiException
 
 
-# def configure_kubernetes_client():
-#     config.load_kube_config()
-#     api_client = client.ApiClient()
-#     core_v1 = client.CoreV1Api(api_client=api_client)
-#     rbac_v1 = client.RbacAuthorizationV1Api(api_client=api_client)
-#     return core_v1, rbac_v1
-
-
 def configure_kubernetes_client():
     # Load the in-cluster configuration
     config.load_incluster_config()
@@ -27,12 +19,12 @@ def configure_kubernetes_client():
     # Create a Kubernetes client configuration object and set the BearerToken field
     configuration = client.Configuration()
     configuration.host = 'https://kubernetes.default.svc'
-    configuration.verify_ssl = False
+    configuration.verify_ssl = True
     configuration.debug = False
     configuration.debugging = False
     configuration.ssl_ca_cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
-    configuration.cert_file = '/var/run/secrets/kubernetes.io/serviceaccount/client.crt'
-    configuration.key_file = '/var/run/secrets/kubernetes.io/serviceaccount/client.key'
+    # configuration.cert_file = '/var/run/secrets/kubernetes.io/serviceaccount/client.crt'
+    # configuration.key_file = '/var/run/secrets/kubernetes.io/serviceaccount/client.key'
     configuration.api_key['authorization'] = 'Bearer ' + token
     configuration.namespace = namespace
 
@@ -51,7 +43,9 @@ def services_account(name):
 
 
 def update_crb(name, cr, kind):
-    rbac_api = client.RbacAuthorizationV1Api()
+    # Call the function to load the cluster configuration
+    api_client = configure_kubernetes_client()
+    rbac_api = client.RbacAuthorizationV1Api(api_client)
     name = name
     cluster_roles = cr
 
@@ -76,8 +70,10 @@ def update_crb(name, cr, kind):
 
 # def update_cr(body, spec, kind, **kwargs):
 def update_rb(name, cr, kind):
-    core_v1 = client.CoreV1Api()
-    rbac_api = client.RbacAuthorizationV1Api()
+    # Call the function to load the cluster configuration
+    api_client = configure_kubernetes_client()
+    core_v1 = client.CoreV1Api(api_client)
+    rbac_api = client.RbacAuthorizationV1Api(api_client)
     name = name
     cluster_roles = cr
 
@@ -114,7 +110,10 @@ def update_rb(name, cr, kind):
 
 
 def user_restricted_permissions(body, spec):
-    rbac_api = client.RbacAuthorizationV1Api()
+    # Call the function to load the cluster configuration
+    api_client = configure_kubernetes_client()
+    rbac_api = client.RbacAuthorizationV1Api(api_client)
+
     user_name = body['metadata']['name']
     user_namespace = body['metadata']['namespace']
     cluster_roles = spec.get('CRoles', [])

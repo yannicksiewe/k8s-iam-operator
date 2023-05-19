@@ -1,17 +1,15 @@
 import base64
 import json
 from kubernetes import client, config
-from utils import configure_kubernetes_client
-
-# # Load the Kubernetes configuration from the default location
-# config.load_kube_config()
 
 
 def generate_cluster_config(body):
-
-    k8s_client = configure_kubernetes_client()
-    # Retrieve the service account token for the user
-    sa_api = client.CoreV1Api(k8s_client)
+    """
+    This function generates a Kubernetes cluster configuration for a user,
+    based on their name, namespace, token, and cluster information.
+    It then creates a Secret object in the user's namespace containing the cluster configuration data.
+    """
+    sa_api = client.CoreV1Api()
     user_name = body['metadata']['name']
     user_namespace = body['metadata']['namespace']
     url_api = sa_api.api_client

@@ -1,0 +1,26 @@
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: yannick
+  namespace: iam
+spec:
+  enabled: true
+  CRoles:
+  - namespace: yannick
+    clusterRole: admin
+    group: devops
+  - namespace: default
+    clusterRole: admin
+    group: devops
+---
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: gitlab
+  namespace: iam
+spec:
+  enabled: true
+  CRoles:
+  - namespace: gitlab
+    clusterRole: admin
+    group: devops

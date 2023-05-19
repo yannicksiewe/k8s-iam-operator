@@ -1,6 +1,5 @@
 import kopf
-
-# import all your handlers here
+import logging
 from handlers import create_group_handler, create_role_handler, create_user_handler
 from controllers import update_group_handler, update_user_handler
 from controllers import delete_group_handler, delete_role_handler, delete_user_handler
@@ -47,15 +46,24 @@ def delete_role_fn(**kwargs):
 def create_user_fn(body, spec, **kwargs):
     create_user_handler(body, spec, **kwargs)
 
+    print("create_user called with spec:", spec)
+    logging.info("create user: %s", spec)
+
 
 @kopf.on.update(GROUP, VERSION, PLURAL)
-def create_user_fn(body, spec, **kwargs):
+def update_user_fn(body, spec, **kwargs):
     update_user_handler(body, spec, **kwargs)
+
+    print(f"update_user called with spec:", spec)
+    logging.info("update user: %s", body['metadata']['name'])
 
 
 @kopf.on.delete(GROUP, VERSION, PLURAL)
 def delete_user_fn(body, **kwargs):
     delete_user_handler(body, **kwargs)
+
+    print(f"delete_user called with", body)
+    logging.info("delete user: %s", body['metadata']['name'])
 
 
 # start the operator
