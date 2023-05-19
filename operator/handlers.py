@@ -7,7 +7,7 @@ from kubeconfig import generate_cluster_config
 
 # Initialize Kubernetes API client
 k8s_client = configure_kubernetes_client()
-client_api = client.ApiClient()
+client_api = client.ApiClient(k8s_client)
 v1_api = client.CoreV1Api(client_api)
 rbac_api = client.RbacAuthorizationV1Api(client_api)
 

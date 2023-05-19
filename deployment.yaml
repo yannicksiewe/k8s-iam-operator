@@ -1,27 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: iam-operator
+  name: k8s-iam-operator
+  namespace: iam
 spec:
   selector:
     matchLabels:
-      app: iam-operator
+      app: k8s-iam-operator
   replicas: 1
   template:
     metadata:
       labels:
-        app: iam-operator
+        app: k8s-iam-operator
     spec:
+      serviceAccountName: k8s-iam-operator
       containers:
-      - name: iam-operator
-        image: k8s-iam-operator:v1
-        args: [
-          'kopf run --standalone /operator/__init__.py',
-        ]
-        volumeMounts:
-        - name: config
-          mountPath: /app/config
-      volumes:
-      - name: config
-        configMap:
-          name: operator-config
+      - name: k8s-iam-operator
+        image: quay.io/yannick_siewe/k8s-iam-operator:latest
