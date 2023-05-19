@@ -1,0 +1,14 @@
+apiVersion: wikimove.me/v1
+kind: ClusterRole
+metadata:
+  name: namespace-list
+spec:
+  rules:
+  - apiGroups:
+    - ''
+    resources:
+    - namespaces
+    verbs:
+    - get
+    - list
+    - watch

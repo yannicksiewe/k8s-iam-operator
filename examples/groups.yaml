@@ -1,0 +1,8 @@
+apiVersion: k8sio.auth/v1
+kind: Group
+metadata:
+  name: devops
+  namespace: iam
+spec:
+  CRoles:
+  - clusterRole: view
