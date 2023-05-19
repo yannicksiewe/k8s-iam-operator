@@ -2,12 +2,44 @@ from kubernetes import client, config
 from kubernetes.client import ApiException
 
 
+# def configure_kubernetes_client():
+#     config.load_kube_config()
+#     api_client = client.ApiClient()
+#     core_v1 = client.CoreV1Api(api_client=api_client)
+#     rbac_v1 = client.RbacAuthorizationV1Api(api_client=api_client)
+#     return core_v1, rbac_v1
+
+
 def configure_kubernetes_client():
-    config.load_kube_config()
-    api_client = client.ApiClient()
-    core_v1 = client.CoreV1Api(api_client=api_client)
-    rbac_v1 = client.RbacAuthorizationV1Api(api_client=api_client)
-    return core_v1, rbac_v1
+    # Load the in-cluster configuration
+    config.load_incluster_config()
+
+    # Retrieve the ServiceAccount token and namespace
+    token_path = '/var/run/secrets/kubernetes.io/serviceaccount/token'
+    namespace_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+
+    with open(token_path, 'r') as f:
+        token = f.read().strip()
+
+    with open(namespace_path, 'r') as f:
+        namespace = f.read().strip()
+
+    # Create a Kubernetes client configuration object and set the BearerToken field
+    configuration = client.Configuration()
+    configuration.host = 'https://kubernetes.default.svc'
+    configuration.verify_ssl = False
+    configuration.debug = False
+    configuration.debugging = False
+    configuration.ssl_ca_cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+    configuration.cert_file = '/var/run/secrets/kubernetes.io/serviceaccount/client.crt'
+    configuration.key_file = '/var/run/secrets/kubernetes.io/serviceaccount/client.key'
+    configuration.api_key['authorization'] = 'Bearer ' + token
+    configuration.namespace = namespace
+
+    # Use the client configuration object to create a Kubernetes API client
+    api_client = client.api_client.ApiClient(configuration)
+
+    return api_client
 
 
 def services_account(name):
@@ -91,7 +123,8 @@ def user_restricted_permissions(body, spec):
     # Create the ClusterRole
     crb = client.V1ClusterRoleBinding(
         metadata=client.V1ObjectMeta(name=f"{user_name}-restricted-namespace-binding"),
-        role_ref=client.V1RoleRef(api_group="rbac.authorization.k8s.io", kind="ClusterRole", name=f"{user_name}-restricted-namespace-role"),
+        role_ref=client.V1RoleRef(api_group="rbac.authorization.k8s.io", kind="ClusterRole",
+                                  name=f"{user_name}-restricted-namespace-role"),
         subjects=[client.V1Subject(kind="ServiceAccount", name=user_name, namespace=user_namespace)]
     )
     try:
@@ -106,7 +139,9 @@ def user_restricted_permissions(body, spec):
 
     # Create the ClusterRole
     cr = client.V1ClusterRole(metadata=client.V1ObjectMeta(name=f"{user_name}-restricted-namespace-role"),
-                              rules=[client.V1PolicyRule(api_groups=[""], resources=["namespaces"], verbs=["get", "watch", "list"], resource_names=restricted_namespaces)])
+                              rules=[client.V1PolicyRule(api_groups=[""], resources=["namespaces"],
+                                                         verbs=["get", "watch", "list"],
+                                                         resource_names=restricted_namespaces)])
     try:
         rbac_api.create_cluster_role(cr)
         print("Restricted namespace ClusterRole created.")
