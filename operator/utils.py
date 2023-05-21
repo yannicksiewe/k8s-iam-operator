@@ -1,8 +1,16 @@
+import logging
 from kubernetes import client, config
 from kubernetes.client import ApiException
 
+# Configure the logging instance, format and level
+logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 def configure_kubernetes_client():
+    """
+    This function will retrieve kubeconfig from serviceAccount.
+    """
     # Load the in-cluster configuration
     config.load_incluster_config()
 
@@ -23,8 +31,6 @@ def configure_kubernetes_client():
     configuration.debug = False
     configuration.debugging = False
     configuration.ssl_ca_cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
-    # configuration.cert_file = '/var/run/secrets/kubernetes.io/serviceaccount/client.crt'
-    # configuration.key_file = '/var/run/secrets/kubernetes.io/serviceaccount/client.key'
     configuration.api_key['authorization'] = 'Bearer ' + token
     configuration.namespace = namespace
 
@@ -62,9 +68,9 @@ def update_crb(name, cr, kind):
                         crb_to_delete.append(crb)
                         try:
                             rbac_api.delete_cluster_role_binding(name=crb)
-                            print(f"\033[38;5;208mClusterRoleBinding {crb} Remove to group {name}\033[0m")
+                            logger.info(f"\033[38;5;208mClusterRoleBinding {crb} Remove to group {name}\033[0m")
                         except ApiException as e:
-                            return {'error': str(e)}
+                            return logger.exception({'error': str(e)}, exc_info=True)
     return crb_to_delete
 
 
@@ -79,7 +85,6 @@ def update_rb(name, cr, kind):
 
     # Iterate over namespaces and remove unused role bindings to group
     all_namespaces = core_v1.list_namespace().items
-    # user_cluster_roles = [role["clusterRole"] for role in cluster_roles if "namespace" in role]
     user_cluster_roles = [(role['namespace'], role["clusterRole"]) for role in cluster_roles if "namespace" in role]
     rb_to_delete = []
     for ns in all_namespaces:
@@ -94,6 +99,11 @@ def update_rb(name, cr, kind):
                                 rb_name = r_binding.metadata.name
                                 rb_nspace = r_binding.metadata.namespace
                                 rb_to_delete.append((rb_name, rb_nspace))
+                                try:
+                                    rbac_api.delete_namespaced_role_binding(name=rb_name, namespace=rb_nspace)
+                                    logger.info(f"\033[38;5;208mRoleBinding {rb_name} Remove to {name}\033[0m")
+                                except ApiException as e:
+                                    return logger.exception({'error': str(e)}, exc_info=True)
                     else:
                         if kind == 'ServiceAccount':
                             if r_subject.kind == 'ServiceAccount' and r_subject.name == name:
@@ -103,9 +113,9 @@ def update_rb(name, cr, kind):
                                     rb_to_delete.append((rb_name, rb_nspace))
                                     try:
                                         rbac_api.delete_namespaced_role_binding(name=rb_name, namespace=rb_nspace)
-                                        print(f"\033[38;5;208mRoleBinding {rb_name} Remove to {name}\033[0m")
+                                        logger.info(f"\033[38;5;208mRoleBinding {rb_name} Remove to {name}\033[0m")
                                     except ApiException as e:
-                                        return {'error': str(e)}
+                                        return logger.exception({'error': str(e)}, exc_info=True)
     return rb_to_delete
 
 
@@ -128,13 +138,12 @@ def user_restricted_permissions(body, spec):
     )
     try:
         rbac_api.create_cluster_role_binding(body=crb)
-        print("Restricted namespace ClusterRole binding created.")
+        logger.info(f"Restricted namespace ClusterRole binding created")
     except ApiException as e:
         if e.status == 409:
             rbac_api.patch_cluster_role_binding(name=crb.metadata.name, body=crb)
-            # print("Restricted namespace ClusterRole binding already exists.")
         else:
-            print("Error creating restricted namespace ClusterRole binding:", e)
+            return logger.exception({'Exception when creating restricted namespace ClusterRole binding': str(e)}, exc_info=True)
 
     # Create the ClusterRole
     cr = client.V1ClusterRole(metadata=client.V1ObjectMeta(name=f"{user_name}-restricted-namespace-role"),
@@ -143,10 +152,9 @@ def user_restricted_permissions(body, spec):
                                                          resource_names=restricted_namespaces)])
     try:
         rbac_api.create_cluster_role(cr)
-        print("Restricted namespace ClusterRole created.")
+        logger.info(f"Restricted namespace ClusterRole created")
     except ApiException as e:
         if e.status == 409:
             rbac_api.patch_cluster_role(name=cr.metadata.name, body=cr)
-            # print("Restricted namespace ClusterRole already exists.")
         else:
-            print("Error creating restricted namespace ClusterRole:", e)
+            return logger.exception({'Exception when creating restricted namespace ClusterRole': str(e)}, exc_info=True)
