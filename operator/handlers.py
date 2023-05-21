@@ -39,7 +39,7 @@ def create_group_handler(body, spec, **kwargs):
                 if e.status == 409:
                     logger.warning(f"\x1b[31mCannot create RoleBinding {binding.metadata.name} because it already exists\x1b[0m")
                 else:
-                    return {'error': str(e)}
+                    return logger.exception({'error': str(e)}, exc_info=True)
 
         else:
             subject = client.V1Subject(api_group="rbac.authorization.k8s.io", kind="Group", name=group_name)
@@ -51,7 +51,7 @@ def create_group_handler(body, spec, **kwargs):
                 if e.status == 409:
                     logger.warning(f"\x1b[31mCannot create ClusterRoleBinding {binding.metadata.name} because it already exists\x1b[0m")
                 else:
-                    return {'error': str(e)}
+                    return logger.exception({'error': str(e)}, exc_info=True)
 
     # Create role bindings for role
     for role in roles:
@@ -66,7 +66,7 @@ def create_group_handler(body, spec, **kwargs):
             if e.status == 409:
                 logger.warning(f"\x1b[31mCannot create RoleBinding {binding.metadata.name} because it already exists\x1b[0m")
             else:
-                return {'error': str(e)}
+                return logger.exception({'error': str(e)}, exc_info=True)
 
 
 def create_role_handler(spec, **kwargs):
