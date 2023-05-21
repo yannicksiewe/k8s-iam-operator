@@ -1,13 +1,15 @@
-import kopf
+import logging
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from utils import configure_kubernetes_client, services_account, user_restricted_permissions
 from kubeconfig import generate_cluster_config
 
+# Configure the logging instance, format and level
+logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Initialize Kubernetes API client
 k8s_client = configure_kubernetes_client()
-client_api = client.ApiClient()
 v1_api = client.CoreV1Api(k8s_client)
 rbac_api = client.RbacAuthorizationV1Api(k8s_client)
 
@@ -32,10 +34,10 @@ def create_group_handler(body, spec, **kwargs):
             binding = client.V1RoleBinding(metadata=client.V1ObjectMeta(name=f"{group_name}-{c_role['namespace']}-{c_role['clusterRole']}", namespace=c_role["namespace"]), role_ref=role_ref, subjects=[subject])
             try:
                 rbac_api.create_namespaced_role_binding(namespace=c_role["namespace"], body=binding)
-                print(f"Role binding created for user {group_name} and role {c_role}")
+                logger.info(f"Role binding created for user {group_name} and role {c_role}")
             except ApiException as e:
                 if e.status == 409:
-                    print(f"\x1b[31mCannot create RoleBinding {binding.metadata.name} because it already exists\x1b[0m")
+                    logger.warning(f"\x1b[31mCannot create RoleBinding {binding.metadata.name} because it already exists\x1b[0m")
                 else:
                     return {'error': str(e)}
 
@@ -44,10 +46,10 @@ def create_group_handler(body, spec, **kwargs):
             binding = client.V1ClusterRoleBinding(metadata=client.V1ObjectMeta(name=f"{group_name}-{user_namespace}-{c_role['clusterRole']}"), role_ref=role_ref, subjects=[subject])
             try:
                 rbac_api.create_cluster_role_binding(body=binding)
-                print(f"ClusterRole binding created for group {group_name} and role {c_role}")
+                logger.info(f"ClusterRole binding created for group {group_name} and role {c_role}")
             except ApiException as e:
                 if e.status == 409:
-                    print(f"\x1b[31mCannot create ClusterRoleBinding {binding.metadata.name} because it already exists\x1b[0m")
+                    logger.warning(f"\x1b[31mCannot create ClusterRoleBinding {binding.metadata.name} because it already exists\x1b[0m")
                 else:
                     return {'error': str(e)}
 
@@ -59,10 +61,10 @@ def create_group_handler(body, spec, **kwargs):
 
         try:
             rbac_api.create_namespaced_role_binding(namespace=user_namespace, body=binding)
-            print(f"Role binding created for user {group_name} and role {role}")
+            logger.info(f"Role binding created for user {group_name} and role {role}")
         except ApiException as e:
             if e.status == 409:
-                print(f"\x1b[31mCannot create RoleBinding {binding.metadata.name} because it already exists\x1b[0m")
+                logger.warning(f"\x1b[31mCannot create RoleBinding {binding.metadata.name} because it already exists\x1b[0m")
             else:
                 return {'error': str(e)}
 
@@ -81,13 +83,13 @@ def create_role_handler(spec, **kwargs):
             # Check if the Role already exists
             rbac_api.read_namespaced_role(namespace=kwargs['namespace'], name=kwargs['body']['metadata']['name'])
             rbac_api.patch_namespaced_role(name=kwargs['body']['metadata']['name'], namespace=kwargs['namespace'], body=body)
-            print(f"Role '{body.metadata.name}' updated")
+            logger.info(f"Role '{body.metadata.name}' updated")
         except ApiException as e:
             if e.status == 404:
                 rbac_api.create_namespaced_role(namespace=kwargs['namespace'], body=body)
-                print(f"Role '{body.metadata.name}' created")
+                logger.info(f"Role '{body.metadata.name}' created")
             else:
-                print(kopf.TemporaryError(f"\x1b[31mException when creating/updating Role\x1b[0m: {e.reason}"))
+                logger.exception(f"\x1b[31mException when creating/updating Role\x1b[0m: {e.reason}")
 
     elif kwargs['body']['kind'] == 'ClusterRole':
         body = client.V1ClusterRole(
@@ -98,15 +100,15 @@ def create_role_handler(spec, **kwargs):
             # Check if the ClusterRole already exists
             rbac_api.read_cluster_role(name=kwargs['body']['metadata']['name'])
             rbac_api.patch_cluster_role(name=kwargs['body']['metadata']['name'], body=body)
-            print(f"ClusterRole '{body.metadata.name}' updated")
+            logger.info(f"ClusterRole '{body.metadata.name}' updated")
         except ApiException as e:
             if e.status == 404:
                 rbac_api.create_cluster_role(body=body)
-                print(f"ClusterRole '{body.metadata.name}' created")
+                logger.info(f"ClusterRole '{body.metadata.name}' created")
             else:
-                print(kopf.TemporaryError(f"\x1b[31mException when creating ClusterRole\x1b[0m: {e.reason}"))
+                logger.exception(f"\x1b[31mException when creating ClusterRole\x1b[0m: {e.reason}")
     else:
-        raise kopf.TemporaryError(f"Unsupported kind '{kwargs['body']['kind']}'")
+        raise logger.warning(f"Unsupported kind '{kwargs['body']['kind']}'")
 
 
 def create_user_handler(body, spec, **kwargs):
@@ -124,7 +126,7 @@ def create_user_handler(body, spec, **kwargs):
     # Create User
     try:
         v1_api.create_namespaced_service_account(namespace=user_namespace, body=sa_body)
-        print(f"User {user_name} created.")
+        logger.info(f"User {user_name} created.")
     except ApiException as e:
         return {'error': str(e)}
 
@@ -132,28 +134,28 @@ def create_user_handler(body, spec, **kwargs):
     if enabled:
         try:
             user_restricted_permissions(body=body, spec=spec)
-            print("Permissions initialise")
+            logger.info("Permissions initialise")
         except ApiException as e:
             return {'error': str(e)}
 
         try:
             v1_api.read_namespace(user_name)
-            print(f"Namespace {user_name} already exists.")
+            logger.info(f"Namespace {user_name} already exists.")
         except ApiException as e:
             if e.status == 404:
                 # Namespace does not exist, so create it
                 ns = client.V1Namespace(metadata=client.V1ObjectMeta(name=user_name))
                 v1_api.create_namespace(ns)
-                print(f"Namespace {user_name} created.")
+                logger.info(f"Namespace {user_name} created.")
             else:
-                # Some other error occurred
-                print("Error: %s" % e)
+                # print("Error: %s" % e)
+                logger.warning("Error: %s" % e)
         try:
             generate_cluster_config(body=body)
-            print(f"UserConfigs file {user_name}-cluster-context generated")
+            logger.info(f"UserConfigs file {user_name}-cluster-context generated")
         except ApiException as e:
             if e.status == 409:
-                print(f"\x1b[31mCannot create UserConfigs {user_name}-cluster-context because it already exists\x1b[0m")
+                logger.warning(f"\x1b[31mCannot create UserConfigs {user_name}-cluster-context because it already exists\x1b[0m")
             else:
                 return {'error': str(e)}
     else:
@@ -169,7 +171,7 @@ def create_user_handler(body, spec, **kwargs):
             v1_api.read_namespace(name=ns_name)
         except ApiException as e:
             if e.status == 404:
-                print(f"\x1b[31mNamespace '{ns_name}' does not exist\x1b[0m")
+                logger.warning(f"\x1b[31mNamespace '{ns_name}' does not exist\x1b[0m")
             else:
                 return {'error': str(e)}
 
@@ -178,7 +180,7 @@ def create_user_handler(body, spec, **kwargs):
             rbac_api.read_cluster_role(name=cluster_role_name)
         except ApiException as e:
             if e.status == 404:
-                print(f"\x1b[31mCluster role '{cluster_role_name}' does not exist\x1b[0m")
+                logger.warning(f"\x1b[31mCluster role '{cluster_role_name}' does not exist\x1b[0m")
             else:
                 return {'error': str(e)}
 
@@ -191,7 +193,7 @@ def create_user_handler(body, spec, **kwargs):
                                                                         namespace=role["namespace"]), role_ref=role_ref, subjects=[group_subject, user_subject],)
             try:
                 rbac_api.create_namespaced_role_binding(namespace=role["namespace"], body=binding)
-                print(f"Role binding created for user {user_name} and role {role}")
+                logger.info(f"Role binding created for user {user_name} and role {role}")
             except ApiException as e:
                 return {'error': str(e)}
 
@@ -203,6 +205,6 @@ def create_user_handler(body, spec, **kwargs):
 
         try:
             rbac_api.create_namespaced_role_binding(namespace=user_namespace, body=binding)
-            print(f"Role binding created for user {user_name} and role {role}")
+            logger.info(f"Role binding created for user {user_name} and role {role}")
         except ApiException as e:
             return {'error': str(e)}
