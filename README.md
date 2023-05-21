@@ -1,3 +1,5 @@
+[![Docker Repository on Quay](https://quay.io/repository/yannick_siewe/k8s-iam-operator/status "Docker Repository on Quay")](https://quay.io/repository/yannick_siewe/k8s-iam-operator)
+
 # K8s-iam-operator
 A Python-based Kubernetes Operator using the Kopf library to manage Roles, ClusterRoles, Groups, and Users.
 
