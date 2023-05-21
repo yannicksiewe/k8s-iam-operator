@@ -14,5 +14,8 @@ COPY requirements.txt /app/
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+EXPOSE 8080
+
 # Set the entrypoint command
 CMD [ "kopf", "run", "operator/__init__.py" ]
+

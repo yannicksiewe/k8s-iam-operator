@@ -1,15 +1,15 @@
 import kopf
-# import logging
+import os
 from handlers import create_group_handler, create_role_handler, create_user_handler
 from controllers import update_group_handler, update_user_handler
 from controllers import delete_group_handler, delete_role_handler, delete_user_handler
 
-GROUP = "k8sio.auth"
-VERSION = "v1"
-PLURAL = "users"
-GPLURAL = "groups"
-RPLURAL = "roles"
-CRPLURAL = "clusterroles"
+GROUP = os.environ.get('GROUP_NAME', 'k8sio.auth')
+VERSION = os.environ.get('VERSION', 'v1')
+PLURAL = os.environ.get('PLURAL', 'users')
+GPLURAL = os.environ.get('GROUP_PLURAL', 'groups')
+RPLURAL = os.environ.get('ROLE_PLURAL', 'roles')
+CRPLURAL = os.environ.get('CLUSTER_ROLE_PLURAL', 'clusterroles')
 
 
 # define the Kopf operator
