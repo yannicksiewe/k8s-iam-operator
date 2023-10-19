@@ -1,7 +1,7 @@
 import logging
 from kubernetes import client
 from kubernetes.client.rest import ApiException
-from utils import configure_kubernetes_client, services_account, user_restricted_permissions
+from utils import configure_kubernetes_client, create_services_account, create_service_account_token, user_restricted_permissions
 from kubeconfig import generate_cluster_config
 
 # Configure the logging instance, format and level
@@ -121,7 +121,8 @@ def create_user_handler(body, spec, **kwargs):
     user_namespace = kwargs['namespace']
     roles = spec.get('Roles', [])
     enabled = spec.get('enabled', False)
-    sa_body = services_account(user_name)
+    sa_body = create_services_account(user_name)
+    to_body = create_service_account_token(user_name)
 
     # Create User
     try:
@@ -132,6 +133,14 @@ def create_user_handler(body, spec, **kwargs):
 
     # Check if the namespace already exists
     if enabled:
+        # Create the token for the user
+        try:
+            sa_api = client.CoreV1Api()
+            sa_api.create_namespaced_secret(namespace=user_namespace, body=to_body)
+            logger.info(f"Service account token {user_name} created in namespace {user_namespace}")
+        except ApiException as e:
+            return {'error': str(e)}
+
         try:
             user_restricted_permissions(body=body, spec=spec)
             logger.info("Permissions initialise")
@@ -150,6 +159,7 @@ def create_user_handler(body, spec, **kwargs):
             else:
                 # print("Error: %s" % e)
                 logger.warning("Error: %s" % e)
+
         try:
             generate_cluster_config(body=body)
             logger.info(f"UserConfigs file {user_name}-cluster-context generated")

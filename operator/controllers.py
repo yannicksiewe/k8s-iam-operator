@@ -2,7 +2,7 @@ import logging
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from utils import configure_kubernetes_client
-from utils import services_account, update_crb, update_rb, user_restricted_permissions
+from utils import create_services_account, update_crb, update_rb, user_restricted_permissions
 from kubeconfig import generate_cluster_config
 
 # Configure the logging instance, format and level
@@ -101,7 +101,7 @@ def update_user_handler(body, spec, **kwargs):
     enabled = spec.get('enabled', False)
     user_namespace = kwargs['namespace']
     roles = spec.get('Roles', [])
-    sa_body = services_account(user_name)
+    sa_body = create_services_account(user_name)
 
     # Update User
     try:
