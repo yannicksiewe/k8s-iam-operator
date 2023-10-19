@@ -40,12 +40,30 @@ def configure_kubernetes_client():
     return api_client
 
 
-def services_account(name):
-    sa_body = client.V1ServiceAccount(
+def create_services_account(name):
+    body = client.V1ServiceAccount(
         metadata=client.V1ObjectMeta(name=name),
         automount_service_account_token=True,
     )
-    return sa_body
+    return body
+
+
+def create_service_account_token(name):
+    # Create a Kubernetes client
+    sa_client = client.CoreV1Api()
+
+    # Create a secret object
+    body = client.V1Secret(
+        metadata=client.V1ObjectMeta(
+            name=name + "-token",
+            annotations={
+                "kubernetes.io/service-account.name": name
+            }
+        ),
+        type="kubernetes.io/service-account-token"
+    )
+
+    return body
 
 
 def update_crb(name, cr, kind):

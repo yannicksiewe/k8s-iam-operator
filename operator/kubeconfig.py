@@ -15,9 +15,8 @@ def generate_cluster_config(body):
     url_api = sa_api.api_client
 
     # Retrieve User token information
-    secrets = sa_api.list_namespaced_secret(namespace=user_namespace)
-    token_secret = next((s for s in secrets.items if s.metadata.name.startswith(user_name)), None)
-    token = token_secret.data['token']
+    secret = sa_api.read_namespaced_secret(user_name + "-token", user_namespace)
+    token = secret.data["token"]
 
     # Retrieve the cluster information from the configuration
     config_map = sa_api.read_namespaced_config_map(name='kube-root-ca.crt', namespace='kube-system')
