@@ -1,4 +1,4 @@
-apiVersion: wikimove.me/v1
+apiVersion: k8sio.auth/v1
 kind: ClusterRole
 metadata:
   name: namespace-list
