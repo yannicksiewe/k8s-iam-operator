@@ -152,7 +152,7 @@ def create_user_handler(body, spec, **kwargs):
 
     # Create User
     try:
-        # Create User's ServiceAccount
+        # Create ServiceAccount
         v1_api.create_namespaced_service_account(namespace=user_namespace, body=sa_body)
         logger.info(f"User {user_name} created.")
     except ApiException as e:
@@ -160,7 +160,7 @@ def create_user_handler(body, spec, **kwargs):
 
     # Check if the namespace already exists
     if enabled:
-        # Create the token for the user
+        # Create ServiceAccount token and Secret
         try:
             sa_api = client.CoreV1Api()
             sa_api.create_namespaced_secret(namespace=user_namespace, body=to_body)
