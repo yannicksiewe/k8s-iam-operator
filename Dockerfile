@@ -11,7 +11,7 @@ COPY setup.py /app/
 COPY setup.cfg /app/
 COPY requirements.txt /app/
 
-# Install dependencies
+# Install dependencies define in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 8080
