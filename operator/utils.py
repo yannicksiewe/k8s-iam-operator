@@ -144,35 +144,54 @@ def user_restricted_permissions(body, spec):
 
     user_name = body['metadata']['name']
     user_namespace = body['metadata']['namespace']
+
     cluster_roles = spec.get('CRoles', [])
     restricted_namespaces = list(set([role["namespace"] for role in cluster_roles] + ["default", f"{user_name}"]))
 
     # Create the ClusterRole
-    crb = client.V1ClusterRoleBinding(
-        metadata=client.V1ObjectMeta(name=f"{user_name}-restricted-namespace-binding"),
-        role_ref=client.V1RoleRef(api_group="rbac.authorization.k8s.io", kind="ClusterRole",
-                                  name=f"{user_name}-restricted-namespace-role"),
-        subjects=[client.V1Subject(kind="ServiceAccount", name=user_name, namespace=user_namespace)]
+    cr = client.V1ClusterRole(
+        metadata=client.V1ObjectMeta(name=f"{user_name}-restricted-namespace-role"),
+        rules=[client.V1PolicyRule(
+            api_groups=[""],
+            resources=["*"],
+            verbs=["get", "watch", "list"],
+            resource_names=restricted_namespaces
+        )]
     )
-    try:
-        rbac_api.create_cluster_role_binding(body=crb)
-        logger.info(f"Restricted namespace ClusterRole binding created")
-    except ApiException as e:
-        if e.status == 409:
-            rbac_api.patch_cluster_role_binding(name=crb.metadata.name, body=crb)
-        else:
-            return logger.exception({'Exception when creating restricted namespace ClusterRole binding': str(e)}, exc_info=True)
 
-    # Create the ClusterRole
-    cr = client.V1ClusterRole(metadata=client.V1ObjectMeta(name=f"{user_name}-restricted-namespace-role"),
-                              rules=[client.V1PolicyRule(api_groups=[""], resources=["namespaces"],
-                                                         verbs=["get", "watch", "list"],
-                                                         resource_names=restricted_namespaces)])
     try:
         rbac_api.create_cluster_role(cr)
-        logger.info(f"Restricted namespace ClusterRole created")
+        logger.info(f"Restricted namespace ClusterRole '{user_name}-restricted-namespace-role' created")
     except ApiException as e:
         if e.status == 409:
             rbac_api.patch_cluster_role(name=cr.metadata.name, body=cr)
+            logger.info(f"Restricted namespace ClusterRole '{user_name}-restricted-namespace-role' updated")
         else:
-            return logger.exception({'Exception when creating restricted namespace ClusterRole': str(e)}, exc_info=True)
+            logger.exception({'Exception when creating restricted namespace ClusterRole': str(e)}, exc_info=True)
+            return
+
+    # Create the ClusterRolebinding
+    crb = client.V1ClusterRoleBinding(
+        metadata=client.V1ObjectMeta(name=f"{user_name}-restricted-namespace-binding"),
+        role_ref=client.V1RoleRef(
+            api_group="rbac.authorization.k8s.io",
+            kind="ClusterRole",
+            name=f"{user_name}-restricted-namespace-role"
+        ),
+        subjects=[client.V1Subject(
+            kind="ServiceAccount",
+            name=user_name,
+            namespace=user_namespace
+        )]
+    )
+
+    try:
+        rbac_api.create_cluster_role_binding(body=crb)
+        logger.info(f"Restricted namespace ClusterRoleBinding '{user_name}-restricted-namespace-binding' created")
+    except ApiException as e:
+        if e.status == 409:
+            rbac_api.patch_cluster_role_binding(name=crb.metadata.name, body=crb)
+            logger.info(f"Restricted namespace ClusterRoleBinding '{user_name}-restricted-namespace-binding' updated")
+        else:
+            logger.exception({'Exception when creating restricted namespace ClusterRoleBinding': str(e)}, exc_info=True)
+            return

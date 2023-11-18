@@ -25,14 +25,22 @@ spec:
                     properties:
                       namespace:
                         type: string
+                        minLength: 1
                       clusterRole:
                         type: string
+                        minLength: 1
                       group:
                         type: string
+                        minLength: 1
+                    # Specify required fields within CRole
+                    required:
+                      - namespace
+                      - clusterRole
                 Roles:
                   type: array
                   items:
                      type: string
+                     minLength: 1
   scope: Namespaced
   names:
     plural: users
