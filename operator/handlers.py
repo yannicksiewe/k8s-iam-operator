@@ -1,4 +1,5 @@
 import logging
+import time
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from utils import configure_kubernetes_client, create_services_account, create_service_account_token, user_restricted_permissions
@@ -74,6 +75,29 @@ def create_role_handler(spec, **kwargs):
     This handler will be called when a Role/ClusterRole resource is created.
     It creates/updates the corresponding Kubernetes Role/ClusterRole object.
     """
+    max_retries = 2
+    retry_count = 0
+
+    # Check and retry for namespace existence if it's a Role
+    if kwargs['body']['kind'] == 'Role':
+        while retry_count <= max_retries:
+            try:
+                v1_api.read_namespace(name=kwargs['namespace'])
+                break  # Namespace exists, exit retry loop
+            except ApiException as e:
+                if e.status == 404:
+                    logger.warning(f"Namespace '{kwargs['namespace']}' not found, retrying...")
+                    retry_count += 1
+                    time.sleep(5)  # Wait for 5 seconds before retrying
+                else:
+                    logger.exception(f"Exception when checking namespace existence: {e.reason}")
+                    return  # Exit function on non-retryable error
+
+        if retry_count > max_retries:
+            logger.error(f"Maximum retries reached. Namespace '{kwargs['namespace']}' may not exist.")
+            return  # Exit function as namespace check failed after retries
+
+    # Process Role or ClusterRole creation/update
     if kwargs['body']['kind'] == 'Role':
         body = client.V1Role(
             metadata=client.V1ObjectMeta(name=kwargs['body']['metadata']['name']),
@@ -89,7 +113,7 @@ def create_role_handler(spec, **kwargs):
                 rbac_api.create_namespaced_role(namespace=kwargs['namespace'], body=body)
                 logger.info(f"Role '{body.metadata.name}' created")
             else:
-                logger.exception(f"\x1b[31mException when creating/updating Role\x1b[0m: {e.reason}")
+                logger.exception(f"Exception when creating/updating Role: {e.reason}")
 
     elif kwargs['body']['kind'] == 'ClusterRole':
         body = client.V1ClusterRole(
@@ -106,9 +130,9 @@ def create_role_handler(spec, **kwargs):
                 rbac_api.create_cluster_role(body=body)
                 logger.info(f"ClusterRole '{body.metadata.name}' created")
             else:
-                logger.exception(f"\x1b[31mException when creating ClusterRole\x1b[0m: {e.reason}")
+                logger.exception(f"Exception when creating ClusterRole: {e.reason}")
     else:
-        raise logger.warning(f"Unsupported kind '{kwargs['body']['kind']}'")
+        logger.warning(f"Unsupported kind '{kwargs['body']['kind']}'")
 
 
 def create_user_handler(body, spec, **kwargs):
@@ -121,11 +145,14 @@ def create_user_handler(body, spec, **kwargs):
     user_namespace = kwargs['namespace']
     roles = spec.get('Roles', [])
     enabled = spec.get('enabled', False)
+
+    # Create the resource even if the group does not exist
     sa_body = create_services_account(user_name)
     to_body = create_service_account_token(user_name)
 
     # Create User
     try:
+        # Create User's ServiceAccount
         v1_api.create_namespaced_service_account(namespace=user_namespace, body=sa_body)
         logger.info(f"User {user_name} created.")
     except ApiException as e:
@@ -150,6 +177,7 @@ def create_user_handler(body, spec, **kwargs):
         try:
             v1_api.read_namespace(user_name)
             logger.info(f"Namespace {user_name} already exists.")
+
         except ApiException as e:
             if e.status == 404:
                 # Namespace does not exist, so create it
@@ -196,11 +224,30 @@ def create_user_handler(body, spec, **kwargs):
 
         # Create role bindings for clusterRole
         for role in cluster_roles:
-            role_ref = client.V1RoleRef(api_group="rbac.authorization.k8s.io", kind="ClusterRole", name=role["clusterRole"])
-            group_subject = client.V1Subject(api_group="rbac.authorization.k8s.io", kind="Group", name=role["group"])
-            user_subject = client.V1Subject(api_group=None, kind="ServiceAccount", name=user_name, namespace=user_namespace)
-            binding = client.V1RoleBinding(metadata=client.V1ObjectMeta(name=f"{user_name}-{role['namespace']}-{role['clusterRole']}",
-                                                                        namespace=role["namespace"]), role_ref=role_ref, subjects=[group_subject, user_subject],)
+            ns_name = role.get('namespace')
+            cluster_role_name = role.get('clusterRole')
+            group_name = role.get('group')
+
+            # Create role bindings for clusterRole
+            role_ref = client.V1RoleRef(api_group="rbac.authorization.k8s.io", kind="ClusterRole", name=cluster_role_name)
+
+            # Create the list of subjects
+            subjects = [client.V1Subject(api_group=None, kind="ServiceAccount", name=user_name, namespace=user_namespace)]
+
+            # Add group subject only if the group is specified
+            if group_name:
+                group_subject = client.V1Subject(api_group="rbac.authorization.k8s.io", kind="Group", name=group_name)
+                subjects.append(group_subject)
+
+            binding = client.V1RoleBinding(
+                metadata=client.V1ObjectMeta(
+                    name=f"{user_name}-{ns_name}-{cluster_role_name}",
+                    namespace=ns_name
+                ),
+                role_ref=role_ref,
+                subjects=subjects
+            )
+
             try:
                 rbac_api.create_namespaced_role_binding(namespace=role["namespace"], body=binding)
                 logger.info(f"Role binding created for user {user_name} and role {role}")
@@ -210,11 +257,19 @@ def create_user_handler(body, spec, **kwargs):
     # Create role bindings for role
     for role in roles:
         role_ref = client.V1RoleRef(api_group="rbac.authorization.k8s.io", kind="Role", name=role)
-        subject = client.V1Subject(api_group="rbac.authorization.k8s.io", kind="ServiceAccount", name=user_name)
-        binding = client.V1RoleBinding(metadata=client.V1ObjectMeta(name=f"{user_name}-{user_namespace}-{role}", namespace=user_namespace), role_ref=role_ref, subjects=[subject])
+
+        # Note the apiGroup is set to an empty string for a ServiceAccount
+        subject = client.V1Subject(api_group="", kind="ServiceAccount", name=user_name, namespace=user_namespace)
+
+        binding = client.V1RoleBinding(
+            metadata=client.V1ObjectMeta(name=f"{user_name}-{user_namespace}-{role}", namespace=user_namespace),
+            role_ref=role_ref,
+            subjects=[subject]
+        )
 
         try:
             rbac_api.create_namespaced_role_binding(namespace=user_namespace, body=binding)
             logger.info(f"Role binding created for user {user_name} and role {role}")
         except ApiException as e:
+            logger.error(f"Error creating role binding for {role} in namespace {user_namespace}: {e.reason} - Status: {e.status}")
             return {'error': str(e)}
