@@ -1,12 +1,14 @@
-import logging
 import time
+import logging
+from configs.log_config import setup_logging
 from kubernetes import client
 from kubernetes.client.rest import ApiException
-from utils import configure_kubernetes_client, create_services_account, create_service_account_token, user_restricted_permissions
-from kubeconfig import generate_cluster_config
+from .utils import configure_kubernetes_client, create_services_account, create_service_account_token, user_restricted_permissions
+from .kubeconfig import generate_cluster_config
 
 # Configure the logging instance, format and level
-logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', level=logging.DEBUG)
+#
+setup_logging()
 logger = logging.getLogger(__name__)
 
 # Initialize Kubernetes API client

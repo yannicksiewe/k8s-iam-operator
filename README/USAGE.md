@@ -150,7 +150,6 @@ In a decentralized user management model, the K8s IAM Operator manages users in 
             - create
             - update
             - delete
-
 	```
 	```kubernetes
     apiVersion: k8sio.auth/v1

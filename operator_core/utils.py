@@ -1,41 +1,51 @@
 import logging
+from configs.log_config import setup_logging
 from kubernetes import client, config
 from kubernetes.client import ApiException
 
 # Configure the logging instance, format and level
-logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', level=logging.DEBUG)
+#
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
 def configure_kubernetes_client():
     """
-    This function will retrieve kubeconfig from serviceAccount.
+    This function configures the Kubernetes client for both in-cluster and local environments.
     """
-    # Load the in-cluster configuration
-    config.load_incluster_config()
+    # Try to load in-cluster configuration first
+    try:
+        config.load_incluster_config()
+        in_cluster = True
+    except config.ConfigException:
+        # Fall back to local kubeconfig
+        config.load_kube_config()
+        in_cluster = False
 
-    # Retrieve the ServiceAccount token and namespace
-    token_path = '/var/run/secrets/kubernetes.io/serviceaccount/token'
-    namespace_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
-
-    with open(token_path, 'r') as f:
-        token = f.read().strip()
-
-    with open(namespace_path, 'r') as f:
-        namespace = f.read().strip()
-
-    # Create a Kubernetes client configuration object and set the BearerToken field
+    # Create a Kubernetes client configuration object
     configuration = client.Configuration()
-    configuration.host = 'https://kubernetes.default.svc'
+
+    if in_cluster:
+        # In-cluster specific configuration
+        token_path = '/var/run/secrets/kubernetes.io/serviceaccount/token'
+        with open(token_path, 'r') as f:
+            token = f.read().strip()
+        configuration.api_key['authorization'] = 'Bearer ' + token
+
+        configuration.ssl_ca_cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+        configuration.host = 'https://kubernetes.default.svc'
+    else:
+        # Local environment configuration
+        # The kubeconfig file loaded above will have the necessary details
+        configuration = client.Configuration.get_default_copy()
+
+    # Common configuration settings
     configuration.verify_ssl = True
     configuration.debug = False
     configuration.debugging = False
-    configuration.ssl_ca_cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
-    configuration.api_key['authorization'] = 'Bearer ' + token
-    configuration.namespace = namespace
 
     # Use the client configuration object to create a Kubernetes API client
-    api_client = client.api_client.ApiClient(configuration)
+    api_client = client.ApiClient(configuration)
 
     return api_client
 
@@ -50,7 +60,7 @@ def create_services_account(name):
 
 def create_service_account_token(name):
     # Create a Kubernetes client
-    sa_client = client.CoreV1Api()
+    client.CoreV1Api()
 
     # Create a secret object
     body = client.V1Secret(
