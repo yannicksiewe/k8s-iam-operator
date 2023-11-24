@@ -1,12 +1,14 @@
 import logging
+from configs.log_config import setup_logging
 from kubernetes import client
 from kubernetes.client.rest import ApiException
-from utils import configure_kubernetes_client
-from utils import create_services_account, update_crb, update_rb, user_restricted_permissions
-from kubeconfig import generate_cluster_config
+from .utils import configure_kubernetes_client
+from .utils import create_services_account, update_crb, update_rb, user_restricted_permissions
+from .kubeconfig import generate_cluster_config
 
 # Configure the logging instance, format and level
-logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', level=logging.DEBUG)
+#
+setup_logging()
 logger = logging.getLogger(__name__)
 
 # Initialize Kubernetes API client
@@ -85,7 +87,8 @@ def update_group_handler(body, spec, **kwargs):
             logger.info(f"\x1b[32mAdded RoleBinding {binding.metadata.name} to {group_name}\x1b[0m")
         except ApiException as e:
             if e.status == 409:
-                rbac_api.patch_namespaced_role_binding(name=binding.metadata.name, namespace=user_namespace, body=binding)
+                rbac_api.patch_namespaced_role_binding(name=binding.metadata.name, namespace=user_namespace,
+                                                       body=binding)
             else:
                 return logger.exception({'An error occurred': str(e)}, exc_info=True)
 
@@ -181,14 +184,17 @@ def update_user_handler(body, spec, **kwargs):
     for role in roles:
         role_ref = client.V1RoleRef(api_group="rbac.authorization.k8s.io", kind="Role", name=role)
         subject = client.V1Subject(api_group="rbac.authorization.k8s.io", kind="ServiceAccount", name=user_name)
-        binding = client.V1RoleBinding(metadata=client.V1ObjectMeta(name=f"{user_name}-{user_namespace}-{role}", namespace=user_namespace), role_ref=role_ref, subjects=[subject])
+        binding = client.V1RoleBinding(
+            metadata=client.V1ObjectMeta(name=f"{user_name}-{user_namespace}-{role}", namespace=user_namespace),
+            role_ref=role_ref, subjects=[subject])
 
         try:
             rbac_api.create_namespaced_role_binding(namespace=user_namespace, body=binding)
             logger.info(f"\x1b[32mAdded RoleBinding {binding.metadata.name} to {user_name}\x1b[0m")
         except client.rest.ApiException as e:
             if e.status == 409:
-                rbac_api.patch_namespaced_role_binding(name=binding.metadata.name, namespace=user_namespace, body=binding)
+                rbac_api.patch_namespaced_role_binding(name=binding.metadata.name, namespace=user_namespace,
+                                                       body=binding)
             else:
                 return logger.exception({'An error occurred': str(e.reason)}, exc_info=True)
 
@@ -227,7 +233,8 @@ def delete_group_handler(body, **kwargs):
                             rbac_api.delete_cluster_role_binding(name=binding.metadata.name)
                             logger.info(f"ClusterRoleBinding '{binding.metadata.name}' deleted")
                         except client.rest.ApiException as e:
-                            return logger.exception({'Exception when deleting cluster_role_Binding': str(e)}, exc_info=True)
+                            return logger.exception({'Exception when deleting cluster_role_Binding': str(e)},
+                                                    exc_info=True)
     except client.rest.ApiException as e:
         return logger.error({'An error occurred': str(e.reason)}, exc_info=True)
 
@@ -253,7 +260,8 @@ def delete_role_handler(**kwargs):
     """
     try:
         if kwargs['body']['kind'] == 'Role':
-            logger.info(f"Attempting to delete Role '{kwargs['body']['metadata']['name']}' in namespace '{kwargs['namespace']}'")
+            logger.info(
+                f"Attempting to delete Role '{kwargs['body']['metadata']['name']}' in namespace '{kwargs['namespace']}'")
             rbac_api.delete_namespaced_role(name=kwargs['body']['metadata']['name'], namespace=kwargs['namespace'])
             logger.info(f"Successfully deleted Role '{kwargs['body']['metadata']['name']}'")
 
@@ -267,7 +275,8 @@ def delete_role_handler(**kwargs):
 
     except ApiException as e:
         if e.status == 404:
-            logger.info(f"Role or ClusterRole '{kwargs['body']['metadata']['name']}' not found. It may have already been deleted.")
+            logger.info(
+                f"Role or ClusterRole '{kwargs['body']['metadata']['name']}' not found. It may have already been deleted.")
         else:
             logger.exception(f"Exception when deleting Role or ClusterRole: {e.reason}")
 
@@ -284,7 +293,9 @@ def delete_user_handler(body, spec, **kwargs):
 
     # Delete the service account for the user
     try:
-        v1_api.delete_namespaced_service_account(user_name, user_namespace, body=client.V1DeleteOptions(propagation_policy='Foreground', grace_period_seconds=5))
+        v1_api.delete_namespaced_service_account(user_name, user_namespace,
+                                                 body=client.V1DeleteOptions(propagation_policy='Foreground',
+                                                                             grace_period_seconds=5))
         logger.info(f"Deleting user {user_name}")
     except ApiException as e:
         return {'An error occurred': str(e)}

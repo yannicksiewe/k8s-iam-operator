@@ -1,6 +1,7 @@
 import base64
 import json
-from kubernetes import client, config
+
+from kubernetes import client
 
 
 def generate_cluster_config(body):
