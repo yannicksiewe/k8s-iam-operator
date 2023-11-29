@@ -6,7 +6,7 @@
 - [Usage](./README/USAGE.md)
 ---
 
-**The K8s IAM Operator: Streamlining Kubernetes Access Management**
+### **The K8s IAM Operator: Streamlining Kubernetes Access Management**
 
 The K8s IAM Operator is an innovative solution designed to streamline the management of Kubernetes Role-Based Access Control (RBAC). This versatile tool is compatible with vanilla Kubernetes and all platforms based on Kubernetes, making it a flexible solution for a wide range of environments. It is tailored to assist DevOps teams in efficiently creating, managing, and monitoring Kubernetes RBAC, thereby enhancing both security and operational efficiency.
 
