@@ -1,3 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: iam
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,4 +21,35 @@ spec:
       serviceAccountName: k8s-iam-operator
       containers:
       - name: k8s-iam-operator
-        image: quay.io/yannick_siewe/k8s-iam-operator:latest
+        image: k8s-iam-operator:2.0.3-RC-alpine
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: GROUP_NAME
+            value: 'k8sio.auth'
+          - name: ENABLE_TRACING
+            value: 'True'
+          - name: TEMPO_ENDPOINT
+            value: "http://apm-tempo.monitoring:4317/"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8081
+          initialDelaySeconds: 120
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8081
+          initialDelaySeconds: 120
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-iam-operator
+  namespace: iam
+spec:
+    selector:
+        app: k8s-iam-operator
+    ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080

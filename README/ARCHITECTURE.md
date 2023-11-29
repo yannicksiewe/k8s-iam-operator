@@ -1,5 +1,28 @@
 ## K8s IAM Operator Architecture Overview
 
+#### 0. **Project Structure**:
+```bash
+k8s-iam-operator/
+│
+├── app/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── config.py
+│   ├── flask_app.py
+│   ├── logging_config.py
+│   ├── kopf_handlers/
+│   │   ├── __init__.py
+│   │   ├── user_handlers.py
+│   │   ├── rbac_handlers.py
+│   │   ├── group_handlers.py
+│   │   └── role_handlers.py
+│   └── utils/
+│       └── kubeconfig.py
+│       └── no200filter.py
+│       └── tracing.py
+│
+└── setup.py
+```
 #### 1. **Operator Deployment**:
    - The operator is deployed as a pod within the Kubernetes cluster.
    - It can be hosted in a specific namespace or cluster-wide, depending on the scope of RBAC management required.
