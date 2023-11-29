@@ -1,85 +1,20 @@
 import logging
-from configs.log_config import setup_logging
-from kubernetes import client, config
+from app.config import KubernetesManager
+from app.logging_config import setup_logging
+from kubernetes import client
 from kubernetes.client import ApiException
+
 
 # Configure the logging instance, format and level
 #
 setup_logging()
 logger = logging.getLogger(__name__)
-
-
-def configure_kubernetes_client():
-    """
-    This function configures the Kubernetes client for both in-cluster and local environments.
-    """
-    # Try to load in-cluster configuration first
-    try:
-        config.load_incluster_config()
-        in_cluster = True
-    except config.ConfigException:
-        # Fall back to local kubeconfig
-        config.load_kube_config()
-        in_cluster = False
-
-    # Create a Kubernetes client configuration object
-    configuration = client.Configuration()
-
-    if in_cluster:
-        # In-cluster specific configuration
-        token_path = '/var/run/secrets/kubernetes.io/serviceaccount/token'
-        with open(token_path, 'r') as f:
-            token = f.read().strip()
-        configuration.api_key['authorization'] = 'Bearer ' + token
-
-        configuration.ssl_ca_cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
-        configuration.host = 'https://kubernetes.default.svc'
-    else:
-        # Local environment configuration
-        # The kubeconfig file loaded above will have the necessary details
-        configuration = client.Configuration.get_default_copy()
-
-    # Common configuration settings
-    configuration.verify_ssl = True
-    configuration.debug = False
-    configuration.debugging = False
-
-    # Use the client configuration object to create a Kubernetes API client
-    api_client = client.ApiClient(configuration)
-
-    return api_client
-
-
-def create_services_account(name):
-    body = client.V1ServiceAccount(
-        metadata=client.V1ObjectMeta(name=name),
-        automount_service_account_token=True,
-    )
-    return body
-
-
-def create_service_account_token(name):
-    # Create a Kubernetes client
-    client.CoreV1Api()
-
-    # Create a secret object
-    body = client.V1Secret(
-        metadata=client.V1ObjectMeta(
-            name=name + "-token",
-            annotations={
-                "kubernetes.io/service-account.name": name
-            }
-        ),
-        type="kubernetes.io/service-account-token"
-    )
-
-    return body
+api_client = KubernetesManager.configure_kubernetes_client()
+rbac_api = client.RbacAuthorizationV1Api(api_client)
 
 
 def update_crb(name, cr, kind):
     # Call the function to load the cluster configuration
-    api_client = configure_kubernetes_client()
-    rbac_api = client.RbacAuthorizationV1Api(api_client)
     name = name
     cluster_roles = cr
 
@@ -105,9 +40,7 @@ def update_crb(name, cr, kind):
 # def update_cr(body, spec, kind, **kwargs):
 def update_rb(name, cr, kind):
     # Call the function to load the cluster configuration
-    api_client = configure_kubernetes_client()
     core_v1 = client.CoreV1Api(api_client)
-    rbac_api = client.RbacAuthorizationV1Api(api_client)
     name = name
     cluster_roles = cr
 
@@ -149,9 +82,6 @@ def update_rb(name, cr, kind):
 
 def user_restricted_permissions(body, spec):
     # Call the function to load the cluster configuration
-    api_client = configure_kubernetes_client()
-    rbac_api = client.RbacAuthorizationV1Api(api_client)
-
     user_name = body['metadata']['name']
     user_namespace = body['metadata']['namespace']
 

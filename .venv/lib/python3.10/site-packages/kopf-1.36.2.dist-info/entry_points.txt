@@ -1,0 +1,2 @@
+[console_scripts]
+kopf = kopf.cli:main
