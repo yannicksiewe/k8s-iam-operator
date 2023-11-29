@@ -21,7 +21,7 @@ spec:
       serviceAccountName: k8s-iam-operator
       containers:
       - name: k8s-iam-operator
-        image: k8s-iam-operator:2.0.3-RC-alpine
+        image: quay.io/yannick_siewe/k8s-iam-operator::2.0.0-alpine
         imagePullPolicy: IfNotPresent
         env:
           - name: GROUP_NAME
