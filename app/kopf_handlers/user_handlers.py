@@ -314,7 +314,10 @@ def delete_user_handler(body, spec, **kwargs):
     try:
         bindings = rbac_api.list_cluster_role_binding()
     except client.rest.ApiException as e:
-        logger.exception({'Exception when reading ClusterRole': str(e.reason)})
+        return logger.exception({'Exception when reading ClusterRole': str(e.reason)})
+
+    if bindings is None:
+        logger.warning(f"No cluster role bindings found for user {user_name}")
         return
 
     for binding in bindings.items:
@@ -323,20 +326,19 @@ def delete_user_handler(body, spec, **kwargs):
 
         for subject in binding.subjects:
             if subject.name == user_name and subject.kind == 'ServiceAccount':
-                # Check if the ClusterRoleBinding exists before attempting to delete
                 try:
-                    existing_binding = rbac_api.read_cluster_role_binding(name=binding.metadata.name)
-                except ApiException as e:
-                    if e.status == 404:
-                        logger.warning(f"ClusterRoleBinding {binding.metadata.name} not found, skipping deletion.")
-                        continue
-                    else:
-                        logger.exception({'Exception when reading cluster role_binding': str(e)})
-                        continue
+                    # Check if the ClusterRoleBinding exists before attempting to delete it
+                    try:
+                        rbac_api.read_cluster_role_binding(name=binding.metadata.name)
+                    except ApiException as read_exception:
+                        if read_exception.status == 404:
+                            logger.info(f"ClusterRoleBinding {binding.metadata.name} not found, skipping deletion.")
+                            continue
+                        else:
+                            raise read_exception
 
-                # Proceed with deletion
-                try:
+                    # Proceed with deletion
                     rbac_api.delete_cluster_role_binding(name=binding.metadata.name)
-                    logger.info(f"Removing clusterRole binding {binding.metadata.name}")
+                    logger.info(f"Removing ClusterRoleBinding {binding.metadata.name}")
                 except client.rest.ApiException as e:
-                    logger.exception({'Exception when deleting cluster role_binding': str(e.reason)})
+                    return logger.exception({'Exception when deleting cluster role_binding': str(e.reason)})
