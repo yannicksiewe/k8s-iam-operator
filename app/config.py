@@ -6,7 +6,6 @@ variables with sensible defaults.
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)

@@ -9,7 +9,6 @@ import logging
 
 from app.kopf_handlers import main as kopf_main
 from app.api import create_app
-from app.config import get_config
 
 # Suppress specific FutureWarnings from dependencies
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -24,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 def run_flask_app():
     """Start the Flask health/metrics server."""
-    config = get_config()
     app = create_app()
 
     logger.info("Starting Flask health/metrics server on port 8081")

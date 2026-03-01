@@ -10,11 +10,7 @@ from app.repositories.secret_repository import SecretRepository
 from app.services.rbac_service import RBACService
 from app.services.kubeconfig_service import KubeconfigService
 from app.validators import validate_user_name, validate_user_spec
-from app.exceptions import (
-    OperatorError,
-    ResourceNotFoundError,
-    ValidationError,
-)
+from app.exceptions import ResourceNotFoundError
 from app.utils.audit import AuditLogger
 
 logger = logging.getLogger(__name__)

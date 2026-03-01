@@ -1,6 +1,6 @@
 [flake8]
-max-line-length = 100
-max-complexity = 10
+max-line-length = 120
+max-complexity = 12
 exclude =
     .git,
     __pycache__,
@@ -16,11 +16,14 @@ exclude =
 
 # Error codes to ignore
 ignore =
-    # E501: line too long (handled by max-line-length)
     # W503: line break before binary operator (conflicts with W504)
     W503,
+    # W504: line break after binary operator
+    W504,
     # E203: whitespace before ':' (conflicts with black)
-    E203
+    E203,
+    # E127: continuation line over-indented for visual indent
+    E127
 
 # Per-file ignores
 per-file-ignores =

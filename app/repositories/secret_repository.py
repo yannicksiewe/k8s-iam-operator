@@ -6,7 +6,7 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 
 from app.repositories.base import BaseRepository
-from app.exceptions import ResourceNotFoundError, ResourceAlreadyExistsError
+# Exceptions are handled by base class
 
 
 class SecretRepository(BaseRepository):
