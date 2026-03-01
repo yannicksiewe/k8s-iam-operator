@@ -1,0 +1,125 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: roles.k8sio.auth
+  labels:
+    app.kubernetes.io/part-of: k8s-iam-operator
+spec:
+  group: k8sio.auth
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - rules
+              properties:
+                rules:
+                  description: List of RBAC policy rules
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      apiGroups:
+                        description: API groups the rule applies to
+                        type: array
+                        items:
+                          type: string
+                      resources:
+                        description: Resources the rule applies to
+                        type: array
+                        items:
+                          type: string
+                      verbs:
+                        description: Verbs allowed on the resources
+                        type: array
+                        items:
+                          type: string
+                      resourceNames:
+                        description: Specific resource names the rule applies to
+                        type: array
+                        items:
+                          type: string
+      additionalPrinterColumns:
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: roles
+    singular: role
+    kind: Role
+    listKind: RoleList
+    categories:
+      - idp
+      - iam
+    shortNames:
+      - r
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterroles.k8sio.auth
+  labels:
+    app.kubernetes.io/part-of: k8s-iam-operator
+spec:
+  group: k8sio.auth
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - rules
+              properties:
+                rules:
+                  description: List of RBAC policy rules
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      apiGroups:
+                        description: API groups the rule applies to
+                        type: array
+                        items:
+                          type: string
+                      resources:
+                        description: Resources the rule applies to
+                        type: array
+                        items:
+                          type: string
+                      verbs:
+                        description: Verbs allowed on the resources
+                        type: array
+                        items:
+                          type: string
+                      resourceNames:
+                        description: Specific resource names the rule applies to
+                        type: array
+                        items:
+                          type: string
+      additionalPrinterColumns:
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Cluster
+  names:
+    plural: clusterroles
+    singular: clusterrole
+    kind: ClusterRole
+    listKind: ClusterRoleList
+    categories:
+      - idp
+      - iam
+    shortNames:
+      - cr

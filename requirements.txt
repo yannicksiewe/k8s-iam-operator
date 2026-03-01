@@ -1,13 +1,15 @@
-kubernetes
-kopf
-Flask
-gunicorn
-prometheus_client
-numpy
-Cython
-grpcio
-opentelemetry-api
-opentelemetry-sdk
-opentelemetry-instrumentation
-opentelemetry-exporter-otlp
-opentelemetry-exporter-jaeger>=1.4.0
+# Core dependencies
+kopf>=1.36.0
+kubernetes>=28.0.0
+flask>=2.3.0
+gunicorn>=21.0.0
+
+# Metrics
+prometheus_client>=0.17.0
+
+# Tracing (OpenTelemetry)
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-instrumentation>=0.41b0
+opentelemetry-exporter-otlp>=1.20.0
+grpcio>=1.50.0

@@ -1,32 +1,164 @@
-# Brief Description
+# k8s-iam-operator
 
-### Table of Contents
-- [Architecture](./README/ARCHITECTURE.md)
-- [Deployment](./README/DEPLOYMENT.md)
-- [Usage](./README/USAGE.md)
----
+A production-ready Kubernetes operator for IAM management using Custom Resource Definitions (CRDs).
 
-### **The K8s IAM Operator: Streamlining Kubernetes Access Management**
+[![CI](https://github.com/yannick-siewe/k8s-iam-operator/workflows/CI/badge.svg)](https://github.com/yannick-siewe/k8s-iam-operator/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The K8s IAM Operator is an innovative solution designed to streamline the management of Kubernetes Role-Based Access Control (RBAC). This versatile tool is compatible with vanilla Kubernetes and all platforms based on Kubernetes, making it a flexible solution for a wide range of environments. It is tailored to assist DevOps teams in efficiently creating, managing, and monitoring Kubernetes RBAC, thereby enhancing both security and operational efficiency.
+## Overview
 
-**Key Features:**
-- **Broad Compatibility**: Works seamlessly with vanilla Kubernetes and any Kubernetes-based platforms, ensuring wide applicability.
-- **Automated Kubeconfig Generation**: Simplifies the process of generating kubeconfig for user service accounts, allowing for quick and secure access management.
-- **Fine-Grained Permission Control**: Implements detailed and nuanced permission systems, adhering to the principle of least privilege for maximum security.
+The k8s-iam-operator streamlines Kubernetes Role-Based Access Control (RBAC) management by providing custom resources for Users, Groups, and Roles. It automates ServiceAccount creation, RBAC bindings, and kubeconfig generation.
 
-**Benefits:**
-- **Enhanced Security**: Adheres to the least privilege principle, minimizing security risks associated with excessive permissions.
-- **Operational Efficiency**: Streamlines access controls management, reducing the time and effort required by DevOps teams.
-- **Error Reduction**: Automates and simplifies complex processes, reducing the likelihood of human error.
+## Features
 
-**Ideal For:**
-- DevOps professionals and organizations seeking a robust solution for managing Kubernetes security and access permissions across various platforms.
-- Teams looking to enhance their Kubernetes infrastructure with an efficient and secure access management workflow that is adaptable to different Kubernetes environments.
+- **User Management**: Create ServiceAccounts with automatic RBAC bindings
+- **Group Management**: Define group-based access control
+- **Role Management**: Define custom Roles and ClusterRoles via CRDs
+- **Kubeconfig Generation**: Automatic kubeconfig secrets for enabled users
+- **Namespace Isolation**: Optional dedicated namespace per user
+- **Audit Logging**: Structured JSON audit logs for compliance
+- **Observability**: Prometheus metrics and OpenTelemetry tracing
 
----
+## Quick Start
 
-### Source:
-1. Implementing Kubernetes Operators with Python - Opcito. https://www.opcito.com/blogs/implementing-kubernetes-operators-with-python
-2. Build a Kubernetes Operator in six steps | Red Hat Developer. https://developers.redhat.com/articles/2021/09/07/build-kubernetes-operator-six-steps
-3. Kubernetes Operators with Python - Spectro Cloud. https://www.spectrocloud.com/blog/writing-kubernetes-operators-with-python/
+### Prerequisites
+
+- Kubernetes 1.24+
+- Helm 3.x
+
+### Installation
+
+```bash
+# Install with Helm
+helm upgrade --install k8s-iam-operator ./charts/k8s-iam-operator \
+  --namespace iam \
+  --create-namespace
+```
+
+### Create a User
+
+```yaml
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: developer
+  namespace: iam
+spec:
+  enabled: true
+  CRoles:
+    - namespace: dev
+      clusterRole: edit
+    - namespace: staging
+      clusterRole: view
+```
+
+```bash
+kubectl apply -f user.yaml
+```
+
+### Create a Group
+
+```yaml
+apiVersion: k8sio.auth/v1
+kind: Group
+metadata:
+  name: devops
+  namespace: iam
+spec:
+  CRoles:
+    - namespace: production
+      clusterRole: view
+    - clusterRole: cluster-view  # Cluster-wide
+```
+
+```bash
+kubectl apply -f group.yaml
+```
+
+## Documentation
+
+- [Deployment Guide](docs/deployment.md)
+- [API Reference](docs/api-reference.md)
+- [Development Guide](docs/development.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│            Kopf Event Handlers              │
+└─────────────────┬───────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────┐
+│     Service Layer (Business Logic)          │
+│  UserService │ GroupService │ RoleService   │
+│         RBACService │ KubeconfigService     │
+└─────────────────┬───────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────┐
+│    Repository Layer (K8s API Abstraction)   │
+└─────────────────┬───────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────┐
+│            Kubernetes API                    │
+└─────────────────────────────────────────────┘
+```
+
+## Development
+
+```bash
+# Install dependencies
+make install-deps
+
+# Run linting
+make lint
+
+# Run unit tests
+make test
+
+# Run with coverage
+make test-coverage
+
+# Build Docker image
+make build
+
+# Run locally
+make run
+```
+
+## Configuration
+
+| Environment Variable | Description | Default |
+|---------------------|-------------|---------|
+| `GROUP_NAME` | CRD API group | `k8sio.auth` |
+| `LOG_LEVEL` | Logging level | `INFO` |
+| `ENABLE_TRACING` | Enable OpenTelemetry | `False` |
+| `TEMPO_ENDPOINT` | OTLP endpoint | `http://localhost:4317/` |
+| `AUDIT_ENABLED` | Enable audit logging | `True` |
+
+## Helm Values
+
+See [values.yaml](charts/k8s-iam-operator/values.yaml) for all options.
+
+Key settings:
+- `replicaCount`: Number of replicas
+- `resources`: CPU/memory limits
+- `tracing.enabled`: Enable distributed tracing
+- `networkPolicy.enabled`: Enable network restrictions
+- `podDisruptionBudget.enabled`: Enable PDB for HA
+
+## License
+
+MIT License - see [LICENSE](LICENSE.md)
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+
+## Acknowledgments
+
+Built with:
+- [Kopf](https://kopf.readthedocs.io/) - Kubernetes Operator Framework for Python
+- [Flask](https://flask.palletsprojects.com/) - Health/metrics endpoints
+- [OpenTelemetry](https://opentelemetry.io/) - Distributed tracing
