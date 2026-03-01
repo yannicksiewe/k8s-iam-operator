@@ -1,0 +1,107 @@
+# Commitlint Configuration
+# https://commitlint.js.org/
+
+extends:
+  - "@commitlint/config-conventional"
+
+rules:
+  # Type must be one of the allowed values
+  type-enum:
+    - 2
+    - always
+    - - feat     # New feature
+      - fix      # Bug fix
+      - docs     # Documentation only
+      - style    # Code style (formatting, etc)
+      - refactor # Code refactoring
+      - perf     # Performance improvement
+      - test     # Adding/updating tests
+      - build    # Build system changes
+      - ci       # CI configuration changes
+      - chore    # Maintenance tasks
+      - revert   # Reverting changes
+
+  # Type must be lowercase
+  type-case:
+    - 2
+    - always
+    - lower-case
+
+  # Type must not be empty
+  type-empty:
+    - 2
+    - never
+
+  # Subject must not be empty
+  subject-empty:
+    - 2
+    - never
+
+  # Subject must be lowercase
+  subject-case:
+    - 2
+    - always
+    - - lower-case
+      - sentence-case
+
+  # Subject must not end with period
+  subject-full-stop:
+    - 2
+    - never
+    - "."
+
+  # Header must be max 100 characters
+  header-max-length:
+    - 2
+    - always
+    - 100
+
+  # Body lines must be max 100 characters
+  body-max-line-length:
+    - 2
+    - always
+    - 100
+
+  # Footer lines must be max 100 characters
+  footer-max-line-length:
+    - 2
+    - always
+    - 100
+
+  # Scope is optional but must be lowercase if present
+  scope-case:
+    - 2
+    - always
+    - lower-case
+
+# Help text for contributors
+helpUrl: |
+  Commit messages must follow the Conventional Commits format:
+
+  <type>(<scope>): <subject>
+
+  <body>
+
+  <footer>
+
+  Examples:
+    feat: add user kubeconfig generation
+    fix(rbac): correct role binding cleanup
+    docs: update installation guide
+    refactor(handlers): simplify user creation flow
+    test: add integration tests for groups
+
+  Types:
+    feat:     New feature
+    fix:      Bug fix
+    docs:     Documentation only
+    style:    Code style changes
+    refactor: Code refactoring
+    perf:     Performance improvement
+    test:     Adding/updating tests
+    build:    Build system changes
+    ci:       CI configuration changes
+    chore:    Maintenance tasks
+    revert:   Reverting changes
+
+  For more info, see: https://www.conventionalcommits.org/
