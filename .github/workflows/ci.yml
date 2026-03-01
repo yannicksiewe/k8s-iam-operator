@@ -184,6 +184,7 @@ jobs:
 
       - name: Install CRDs
         run: |
+          kubectl create namespace iam || true
           kubectl apply -f crd/
 
       - name: Set up Python
