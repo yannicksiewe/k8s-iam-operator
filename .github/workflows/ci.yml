@@ -79,13 +79,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Trivy
-        run: |
-          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install -y trivy
+      - name: Setup Trivy
+        uses: ./.github/actions/setup-trivy
 
       - name: Run Trivy filesystem scan
         run: |
@@ -145,13 +140,8 @@ jobs:
           name: docker-image
           path: /tmp
 
-      - name: Install Trivy
-        run: |
-          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install -y trivy
+      - name: Setup Trivy
+        uses: ./.github/actions/setup-trivy
 
       - name: Run Trivy image scan
         run: |
@@ -201,7 +191,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          pytest tests/integration/ -v --timeout=300 || true
+          pytest tests/integration/ -v --timeout=300
         env:
           KUBECONFIG: ${{ github.workspace }}/.kube/config
 
@@ -267,4 +257,4 @@ jobs:
 
       - name: Lint Helm chart
         run: |
-          helm lint charts/k8s-iam-operator || true
+          helm lint charts/k8s-iam-operator

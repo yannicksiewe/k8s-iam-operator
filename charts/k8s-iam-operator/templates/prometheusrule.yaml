@@ -1,0 +1,113 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "k8s-iam-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "k8s-iam-operator.labels" . | nindent 4 }}
+    {{- with .Values.prometheusRule.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: k8s-iam-operator.rules
+      rules:
+        # Operator availability alerts
+        - alert: IAMOperatorDown
+          expr: absent(up{job="{{ include "k8s-iam-operator.fullname" . }}"}) == 1
+          for: 5m
+          labels:
+            severity: critical
+            {{- with .Values.prometheusRule.alertLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "IAM Operator is down"
+            description: "IAM Operator has been down for more than 5 minutes."
+            runbook_url: "{{ .Values.prometheusRule.runbookUrl }}/operator-down"
+
+        - alert: IAMOperatorHighRestartRate
+          expr: increase(kube_pod_container_status_restarts_total{container="{{ .Chart.Name }}"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+            {{- with .Values.prometheusRule.alertLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "IAM Operator high restart rate"
+            description: "IAM Operator has restarted more than 3 times in the last hour."
+            runbook_url: "{{ .Values.prometheusRule.runbookUrl }}/high-restart-rate"
+
+        # Reconciliation alerts
+        - alert: IAMOperatorReconciliationErrors
+          expr: increase(kopf_handler_errors_total{handler=~".*_handler"}[5m]) > 5
+          for: 5m
+          labels:
+            severity: warning
+            {{- with .Values.prometheusRule.alertLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "High reconciliation error rate"
+            description: "IAM Operator has more than 5 reconciliation errors in the last 5 minutes."
+            runbook_url: "{{ .Values.prometheusRule.runbookUrl }}/high-error-rate"
+
+        - alert: IAMOperatorReconciliationStuck
+          expr: increase(kopf_handler_duration_seconds_count[10m]) == 0
+          for: 15m
+          labels:
+            severity: warning
+            {{- with .Values.prometheusRule.alertLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "Reconciliation appears stuck"
+            description: "IAM Operator has not processed any resources in the last 15 minutes."
+            runbook_url: "{{ .Values.prometheusRule.runbookUrl }}/reconciliation-stuck"
+
+        - alert: IAMOperatorSlowReconciliation
+          expr: histogram_quantile(0.99, sum(rate(kopf_handler_duration_seconds_bucket[5m])) by (le, handler)) > 30
+          for: 10m
+          labels:
+            severity: warning
+            {{- with .Values.prometheusRule.alertLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "Slow reconciliation detected"
+            description: "P99 reconciliation time exceeds 30 seconds."
+            runbook_url: "{{ .Values.prometheusRule.runbookUrl }}/slow-reconciliation"
+
+        # Resource alerts
+        - alert: IAMOperatorHighMemoryUsage
+          expr: container_memory_usage_bytes{container="{{ .Chart.Name }}"} / container_spec_memory_limit_bytes{container="{{ .Chart.Name }}"} > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            {{- with .Values.prometheusRule.alertLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "High memory usage"
+            description: "IAM Operator memory usage is above 90% of limit."
+            runbook_url: "{{ .Values.prometheusRule.runbookUrl }}/high-memory"
+
+        - alert: IAMOperatorHighCPUUsage
+          expr: rate(container_cpu_usage_seconds_total{container="{{ .Chart.Name }}"}[5m]) / container_spec_cpu_quota{container="{{ .Chart.Name }}"} * 100000 > 0.9
+          for: 10m
+          labels:
+            severity: warning
+            {{- with .Values.prometheusRule.alertLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "High CPU usage"
+            description: "IAM Operator CPU usage is above 90% of limit."
+            runbook_url: "{{ .Values.prometheusRule.runbookUrl }}/high-cpu"
+
+        {{- with .Values.prometheusRule.additionalRules }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+{{- end }}

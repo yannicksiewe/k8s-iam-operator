@@ -1,0 +1,106 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [main]
+
+jobs:
+  validate-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title format
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Require conventional commit format for PR titles
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          # Require a scope to be specified
+          requireScope: false
+          # Disallow WIP titles
+          disallowScopes: |
+            wip
+            WIP
+          # Validate the subject line format
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            PR title must start with lowercase letter.
+            Example: "feat: add user authentication"
+
+  validate-commits:
+    name: Validate Commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit messages
+        uses: wagoid/commitlint-github-action@v5
+        with:
+          configFile: .commitlintrc.yml
+        continue-on-error: true
+
+  pr-size-check:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size/xs'
+          xs_max_size: 10
+          s_label: 'size/s'
+          s_max_size: 100
+          m_label: 'size/m'
+          m_max_size: 500
+          l_label: 'size/l'
+          l_max_size: 1000
+          xl_label: 'size/xl'
+          fail_if_xl: false
+          message_if_xl: |
+            This PR is quite large. Consider breaking it into smaller PRs for easier review.
+
+  check-files:
+    name: Check Required Files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for test files
+        run: |
+          # Check if PR adds code but no tests
+          CHANGED_PY=$(git diff --name-only origin/main...HEAD | grep '\.py$' | grep -v 'test' | grep -v '__pycache__' || true)
+          CHANGED_TESTS=$(git diff --name-only origin/main...HEAD | grep 'test.*\.py$' || true)
+
+          if [ -n "$CHANGED_PY" ] && [ -z "$CHANGED_TESTS" ]; then
+            echo "::warning::Python files changed without corresponding test files. Consider adding tests."
+          fi
+
+      - name: Check for documentation
+        run: |
+          # Check if significant code changes without docs
+          CHANGED_CODE=$(git diff --name-only origin/main...HEAD | grep -E '\.(py|yaml|yml)$' | wc -l)
+          CHANGED_DOCS=$(git diff --name-only origin/main...HEAD | grep -E '\.md$' | wc -l)
+
+          if [ "$CHANGED_CODE" -gt 10 ] && [ "$CHANGED_DOCS" -eq 0 ]; then
+            echo "::warning::Significant code changes without documentation updates. Consider updating docs."
+          fi
