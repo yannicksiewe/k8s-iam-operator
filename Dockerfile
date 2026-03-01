@@ -28,8 +28,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Remove build dependencies to reduce container size
 RUN apk del .build-deps
 
+# Create non-root user for running the operator
+RUN adduser -D -u 1000 operator
+
 EXPOSE 8081
 
+# Switch to non-root user
+USER operator
+
 # Set the entrypoint command
-#CMD ["gunicorn", "-b", "0.0.0.0:8080", "-w", "4", "operator_core:main"]
 CMD ["python3", "-m", "app"]

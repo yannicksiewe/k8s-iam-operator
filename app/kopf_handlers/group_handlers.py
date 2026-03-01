@@ -11,22 +11,23 @@ from app.exceptions import OperatorError, ValidationError
 logger = logging.getLogger(__name__)
 
 
-def create_group_handler(body: dict, spec: dict, **kwargs) -> dict:
+def create_group_handler(body: dict, spec, **kwargs) -> dict:
     """Handle Group CRD creation.
 
     Args:
         body: The full Kopf body object
-        spec: The spec portion of the CRD
+        spec: The spec portion of the CRD (may be kopf.Body)
         **kwargs: Additional Kopf kwargs (includes namespace, name, etc.)
 
     Returns:
         Status dict for Kopf
     """
     namespace = kwargs.get('namespace', 'default')
+    spec_dict = dict(spec) if spec else {}
 
     try:
         container = get_container()
-        result = container.group_service.create_group(body, spec, namespace)
+        result = container.group_service.create_group(dict(body), spec_dict, namespace)
         return result
     except ValidationError as e:
         logger.error(f"Validation error creating group: {e.message}")
@@ -39,22 +40,23 @@ def create_group_handler(body: dict, spec: dict, **kwargs) -> dict:
         return {"error": str(e)}
 
 
-def update_group_handler(body: dict, spec: dict, **kwargs) -> dict:
+def update_group_handler(body: dict, spec, **kwargs) -> dict:
     """Handle Group CRD update.
 
     Args:
         body: The full Kopf body object
-        spec: The spec portion of the CRD
+        spec: The spec portion of the CRD (may be kopf.Body)
         **kwargs: Additional Kopf kwargs
 
     Returns:
         Status dict for Kopf
     """
     namespace = kwargs.get('namespace', 'default')
+    spec_dict = dict(spec) if spec else {}
 
     try:
         container = get_container()
-        result = container.group_service.update_group(body, spec, namespace)
+        result = container.group_service.update_group(dict(body), spec_dict, namespace)
         return result
     except ValidationError as e:
         logger.error(f"Validation error updating group: {e.message}")
@@ -67,11 +69,11 @@ def update_group_handler(body: dict, spec: dict, **kwargs) -> dict:
         return {"error": str(e)}
 
 
-def delete_group_handler(body: dict, **kwargs) -> dict:
+def delete_group_handler(body, **kwargs) -> dict:
     """Handle Group CRD deletion.
 
     Args:
-        body: The full Kopf body object
+        body: The full Kopf body object (may be kopf.Body)
         **kwargs: Additional Kopf kwargs
 
     Returns:
@@ -81,7 +83,7 @@ def delete_group_handler(body: dict, **kwargs) -> dict:
 
     try:
         container = get_container()
-        result = container.group_service.delete_group(body, namespace)
+        result = container.group_service.delete_group(dict(body), namespace)
         return result
     except OperatorError as e:
         logger.error(f"Error deleting group: {e.message}")

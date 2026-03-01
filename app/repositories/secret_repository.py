@@ -146,7 +146,8 @@ class SecretRepository(BaseRepository):
             name=name,
             namespace=namespace,
             data={"kubeconfig": kubeconfig_data},
-            secret_type="kubernetes.io/kubeconfig"
+            secret_type="Opaque",
+            labels={"k8s-iam-operator/type": "kubeconfig"}
         )
 
     def update(self, name: str, namespace: str,
