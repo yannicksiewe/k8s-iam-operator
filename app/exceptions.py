@@ -32,8 +32,8 @@ SENSITIVE_PATTERNS = [
     (re.compile(r'(Bearer\s+)[A-Za-z0-9+/=_-]+', re.IGNORECASE), r'\1[REDACTED]'),
     # Base64-encoded data (long strings)
     (re.compile(r'(["\']?)([A-Za-z0-9+/]{50,}=*)\1'), r'\1[REDACTED]\1'),
-    # Kubernetes tokens
-    (re.compile(r'(token["\s:=]+)[A-Za-z0-9._-]+', re.IGNORECASE), r'\1[REDACTED]'),
+    # Kubernetes tokens - only match actual token values (16+ chars after assignment)
+    (re.compile(r'(token["\']*\s*[:=]\s*["\']?)[A-Za-z0-9._-]{16,}', re.IGNORECASE), r'\1[REDACTED]'),
 ]
 
 
