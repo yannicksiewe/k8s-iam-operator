@@ -1,0 +1,29 @@
+apiVersion: v2
+name: k8s-iam-operator
+description: A Kubernetes operator for IAM management using Custom Resource Definitions
+
+type: application
+version: 3.0.0
+appVersion: "3.0.0"
+
+home: https://github.com/yannick-siewe/k8s-iam-operator
+sources:
+  - https://github.com/yannick-siewe/k8s-iam-operator
+
+maintainers:
+  - name: Yannick Siewe
+    url: https://github.com/yannick-siewe
+
+keywords:
+  - kubernetes
+  - operator
+  - iam
+  - rbac
+  - service-account
+  - kubeconfig
+
+annotations:
+  artifacthub.io/category: security
+  artifacthub.io/license: MIT
+  artifacthub.io/operator: "true"
+  artifacthub.io/operatorCapabilities: Full Lifecycle
