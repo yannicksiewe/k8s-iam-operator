@@ -10,7 +10,7 @@ import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from contextvars import ContextVar
 
 logger = logging.getLogger("audit")
