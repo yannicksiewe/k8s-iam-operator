@@ -1,72 +1,54 @@
+"""Configuration management for k8s-iam-operator.
+
+This module provides clean configuration management using environment
+variables with sensible defaults.
+"""
+
 import os
-from kubernetes import client, config
+from dataclasses import dataclass
 
 
+@dataclass(frozen=True)
+class OperatorConfig:
+    """Operator configuration from environment variables."""
+
+    # CRD configuration
+    group: str = os.environ.get('GROUP_NAME', 'k8sio.auth')
+    version: str = os.environ.get('VERSION', 'v1')
+    user_plural: str = os.environ.get('PLURAL', 'users')
+    group_plural: str = os.environ.get('GROUP_PLURAL', 'groups')
+    role_plural: str = os.environ.get('ROLE_PLURAL', 'roles')
+    cluster_role_plural: str = os.environ.get('CLUSTER_ROLE_PLURAL', 'clusterroles')
+
+    # Tracing configuration
+    tracing_enabled: bool = os.environ.get('ENABLE_TRACING', 'False').lower() == 'true'
+    tempo_endpoint: str = os.environ.get('TEMPO_ENDPOINT', 'http://localhost:4317/')
+
+    # Logging configuration
+    log_level: str = os.environ.get('LOG_LEVEL', 'INFO')
+    log_format: str = os.environ.get('LOG_FORMAT', 'json')
+
+    # Operator settings
+    audit_enabled: bool = os.environ.get('AUDIT_ENABLED', 'True').lower() == 'true'
+
+
+# Backwards compatible Config class
 class Config:
+    """Legacy configuration class for backwards compatibility."""
+
     GROUP = os.environ.get('GROUP_NAME', 'k8sio.auth')
     VERSION = os.environ.get('VERSION', 'v1')
     PLURAL = os.environ.get('PLURAL', 'users')
     GPLURAL = os.environ.get('GROUP_PLURAL', 'groups')
     RPLURAL = os.environ.get('ROLE_PLURAL', 'roles')
     CRPLURAL = os.environ.get('CLUSTER_ROLE_PLURAL', 'clusterroles')
-    TEMPO_ENDPOINT = os.environ.get('TEMPO_ENDPOINT', 'clusterroles')
+    TEMPO_ENDPOINT = os.environ.get('TEMPO_ENDPOINT', 'http://localhost:4317/')
 
 
-class KubernetesManager:
-    def __init__(self):
-        self.api_client = self.configure_kubernetes_client()
+def get_config() -> OperatorConfig:
+    """Get the operator configuration.
 
-    @staticmethod
-    def configure_kubernetes_client():
-        """
-        Configures the Kubernetes client for both in-cluster and local environments.
-        """
-        try:
-            config.load_incluster_config()
-            in_cluster = True
-        except config.ConfigException:
-            config.load_kube_config()
-            in_cluster = False
-
-        configuration = client.Configuration()
-
-        if in_cluster:
-            token_path = '/var/run/secrets/kubernetes.io/serviceaccount/token'
-            with open(token_path, 'r') as f:
-                token = f.read().strip()
-            configuration.api_key['authorization'] = 'Bearer ' + token
-            configuration.ssl_ca_cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
-            configuration.host = 'https://kubernetes.default.svc'
-        else:
-            configuration = client.Configuration.get_default_copy()
-
-        configuration.verify_ssl = True
-        configuration.debug = False
-        configuration.debugging = False
-
-        return client.ApiClient(configuration)
-
-    @staticmethod
-    def create_service_account(name):
-        """
-        Creates a service account with the given name.
-        """
-        body = client.V1ServiceAccount(
-            metadata=client.V1ObjectMeta(name=name),
-            automount_service_account_token=True,
-        )
-        return body
-
-    @staticmethod
-    def create_service_account_token(name):
-        """
-        Creates a service account token for the given service account name.
-        """
-        body = client.V1Secret(
-            metadata=client.V1ObjectMeta(
-                name=name + "-token",
-                annotations={"kubernetes.io/service-account.name": name}
-            ),
-            type="kubernetes.io/service-account-token"
-        )
-        return body
+    Returns:
+        OperatorConfig instance with current configuration
+    """
+    return OperatorConfig()

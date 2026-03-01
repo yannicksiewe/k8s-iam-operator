@@ -4,3 +4,4 @@ out
 gen
 .venv
 *.sh
+prompts/

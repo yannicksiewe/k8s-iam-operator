@@ -1,0 +1,71 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "k8s-iam-operator.fullname" . }}
+  labels:
+    {{- include "k8s-iam-operator.labels" . | nindent 4 }}
+rules:
+  # Custom Resource Definitions
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+
+  # Custom Resources (Users, Groups, Roles, ClusterRoles)
+  - apiGroups: ["{{ .Values.config.groupName }}"]
+    resources: ["users", "groups", "roles", "clusterroles"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Custom Resources Status
+  - apiGroups: ["{{ .Values.config.groupName }}"]
+    resources: ["users/status", "groups/status", "roles/status", "clusterroles/status"]
+    verbs: ["get", "update", "patch"]
+
+  # Namespaces
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+
+  # ServiceAccounts
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Secrets (for service account tokens and kubeconfigs)
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ConfigMaps (for CA certificates)
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+
+  # RBAC - Roles (bind allows binding users to arbitrary Roles)
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "bind", "escalate"]
+
+  # RBAC - ClusterRoles (bind allows binding users to arbitrary ClusterRoles)
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "bind", "escalate"]
+
+  # RBAC - RoleBindings
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # RBAC - ClusterRoleBindings
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterrolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Events (for Kopf)
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+
+  # Kopf internal resources
+  - apiGroups: ["kopf.dev"]
+    resources: ["clusterkopfpeerings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
