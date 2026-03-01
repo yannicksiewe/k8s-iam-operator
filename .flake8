@@ -29,8 +29,8 @@ ignore =
 per-file-ignores =
     # Allow unused imports in __init__.py
     __init__.py: F401
-    # Allow assert in tests
-    tests/*: S101
+    # Allow assert, unused imports, and unused variables in tests
+    tests/*: S101,F401,F841
 
 # McCabe complexity
 select = E,F,W,C,B
