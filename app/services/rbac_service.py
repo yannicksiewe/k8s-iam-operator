@@ -98,6 +98,16 @@ class RBACService:
         """Create a RoleBinding for a Role in the user's namespace."""
         binding_name = f"{user.name}-{user.namespace}-{role_name}"
 
+        # Verify namespace exists
+        if not self.ns_repo.exists(user.namespace):
+            logger.warning(f"Namespace '{user.namespace}' does not exist")
+            return
+
+        # Verify Role exists
+        if not self.rbac_repo.role_exists(role_name, user.namespace):
+            logger.warning(f"Role '{role_name}' does not exist in namespace '{user.namespace}'")
+            return
+
         subject = self.rbac_repo.create_service_account_subject(user.name, user.namespace)
         role_ref = self.rbac_repo.create_role_ref(role_name)
 
