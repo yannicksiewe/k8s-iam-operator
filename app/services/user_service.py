@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.models.user import User, UserType, NetworkPolicyMode
+from app.models.user import User, NetworkPolicyMode
 from app.repositories.serviceaccount_repository import ServiceAccountRepository
 from app.repositories.namespace_repository import NamespaceRepository
 from app.repositories.secret_repository import SecretRepository

@@ -424,6 +424,76 @@ def validate_resource_quantity(value: str, field_name: str) -> str:
     return value
 
 
+def _validate_string_dict(data: dict, field_name: str) -> dict:
+    """Validate a dict with string keys and values.
+
+    Args:
+        data: The dict to validate
+        field_name: Name of the field for error messages
+
+    Returns:
+        The validated dict
+
+    Raises:
+        ValidationError: If validation fails
+    """
+    if not isinstance(data, dict):
+        raise ValidationError(field_name, f"{field_name} must be an object")
+    for key, value in data.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise ValidationError(field_name, "keys and values must be strings")
+    return data
+
+
+def _validate_quota(quota: dict) -> dict:
+    """Validate namespace quota configuration.
+
+    Args:
+        quota: The quota dict to validate
+
+    Returns:
+        Validated quota dict
+
+    Raises:
+        ValidationError: If validation fails
+    """
+    if not isinstance(quota, dict):
+        raise ValidationError("namespaceConfig.quota", "quota must be an object")
+    validated_quota = {}
+    quota_fields = [
+        "cpu", "memory", "pods", "services",
+        "persistentvolumeclaims", "secrets", "configmaps"
+    ]
+    for field in quota_fields:
+        if field in quota:
+            validated_quota[field] = validate_resource_quantity(
+                quota[field], f"namespaceConfig.quota.{field}"
+            )
+    return validated_quota
+
+
+def _validate_network_policy(network_policy: str) -> str:
+    """Validate network policy mode.
+
+    Args:
+        network_policy: The network policy value
+
+    Returns:
+        Validated network policy string
+
+    Raises:
+        ValidationError: If validation fails
+    """
+    valid_policies = {"none", "isolated", "restricted"}
+    if network_policy not in valid_policies:
+        raise ValidationError(
+            "namespaceConfig.networkPolicy",
+            f"networkPolicy must be one of: {', '.join(valid_policies)}",
+            network_policy
+        )
+    return network_policy
+
+
 def validate_namespace_config(config: dict) -> dict:
     """Validate namespace configuration for human users.
 
@@ -439,56 +509,19 @@ def validate_namespace_config(config: dict) -> dict:
     if not isinstance(config, dict):
         raise ValidationError("namespaceConfig", "namespaceConfig must be an object")
 
-    validated = {}
+    validated = {
+        "labels": _validate_string_dict(
+            config.get("labels", {}), "namespaceConfig.labels"
+        ),
+        "annotations": _validate_string_dict(
+            config.get("annotations", {}), "namespaceConfig.annotations"
+        ),
+        "networkPolicy": _validate_network_policy(config.get("networkPolicy", "none"))
+    }
 
-    # Validate labels
-    labels = config.get("labels", {})
-    if not isinstance(labels, dict):
-        raise ValidationError("namespaceConfig.labels", "labels must be an object")
-    for key, value in labels.items():
-        if not isinstance(key, str) or not isinstance(value, str):
-            raise ValidationError(
-                "namespaceConfig.labels",
-                "label keys and values must be strings"
-            )
-    validated["labels"] = labels
-
-    # Validate annotations
-    annotations = config.get("annotations", {})
-    if not isinstance(annotations, dict):
-        raise ValidationError("namespaceConfig.annotations", "annotations must be an object")
-    for key, value in annotations.items():
-        if not isinstance(key, str) or not isinstance(value, str):
-            raise ValidationError(
-                "namespaceConfig.annotations",
-                "annotation keys and values must be strings"
-            )
-    validated["annotations"] = annotations
-
-    # Validate quota
     quota = config.get("quota")
     if quota is not None:
-        if not isinstance(quota, dict):
-            raise ValidationError("namespaceConfig.quota", "quota must be an object")
-        validated_quota = {}
-        for field in ["cpu", "memory", "pods", "services",
-                      "persistentvolumeclaims", "secrets", "configmaps"]:
-            if field in quota:
-                validated_quota[field] = validate_resource_quantity(
-                    quota[field], f"namespaceConfig.quota.{field}"
-                )
-        validated["quota"] = validated_quota
-
-    # Validate networkPolicy
-    network_policy = config.get("networkPolicy", "none")
-    valid_policies = {"none", "isolated", "restricted"}
-    if network_policy not in valid_policies:
-        raise ValidationError(
-            "namespaceConfig.networkPolicy",
-            f"networkPolicy must be one of: {', '.join(valid_policies)}",
-            network_policy
-        )
-    validated["networkPolicy"] = network_policy
+        validated["quota"] = _validate_quota(quota)
 
     return validated
 

@@ -1,7 +1,7 @@
 """Repository for Kubernetes NetworkPolicy operations."""
 
 import logging
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 
 from kubernetes import client
 from kubernetes.client.rest import ApiException
