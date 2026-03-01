@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.0.0](https://github.com/yannicksiewe/k8s-iam-operator/compare/v3.1.1...v4.0.0) (2026-03-01)
+
+### Features
+
+* add explicit user types and namespace isolation ([bc3eb56](https://github.com/yannicksiewe/k8s-iam-operator/commit/bc3eb569d42c820ad2b5946b2887c1f2ded4a4b8))
+
+### Bug Fixes
+
+* remove unused List import from audit.py ([599e78d](https://github.com/yannicksiewe/k8s-iam-operator/commit/599e78d8ed44be8522762b2a7a20327120d5e495))
+* resolve flake8 linting errors ([202e360](https://github.com/yannicksiewe/k8s-iam-operator/commit/202e360566a1fc9ac0d1429e9f64d780f2c45b7c))
+
+### Documentation
+
+* add v4 documentation and enhanced observability ([3bc58b3](https://github.com/yannicksiewe/k8s-iam-operator/commit/3bc58b3b78f2bee05b2f0df9c56093f5b544ba7e))
+* update release checklist for automated semantic-release ([ecd2a0d](https://github.com/yannicksiewe/k8s-iam-operator/commit/ecd2a0d22d0494bac17acabcf04316546f605699))
+
 ## [3.1.1](https://github.com/yannicksiewe/k8s-iam-operator/compare/v3.1.0...v3.1.1) (2026-03-01)
 
 ### Code Refactoring
