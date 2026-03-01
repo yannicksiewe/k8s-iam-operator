@@ -178,7 +178,7 @@ class RBACRepository(BaseRepository):
 
     def create_role_binding(self, name: str, namespace: str,
                             role_ref: client.V1RoleRef,
-                            subjects: List[client.V1Subject],
+                            subjects: List,
                             labels: Optional[dict] = None) -> client.V1RoleBinding:
         """Create a RoleBinding."""
         metadata = client.V1ObjectMeta(name=name, namespace=namespace, labels=labels or {})
@@ -197,7 +197,7 @@ class RBACRepository(BaseRepository):
 
     def update_role_binding(self, name: str, namespace: str,
                             role_ref: client.V1RoleRef,
-                            subjects: List[client.V1Subject]) -> client.V1RoleBinding:
+                            subjects: List) -> client.V1RoleBinding:
         """Update a RoleBinding."""
         binding = client.V1RoleBinding(
             metadata=client.V1ObjectMeta(name=name, namespace=namespace),
@@ -225,7 +225,7 @@ class RBACRepository(BaseRepository):
 
     def create_or_update_role_binding(self, name: str, namespace: str,
                                        role_ref: client.V1RoleRef,
-                                       subjects: List[client.V1Subject],
+                                       subjects: List,
                                        labels: Optional[dict] = None) -> client.V1RoleBinding:
         """Create or update a RoleBinding."""
         try:
@@ -254,7 +254,7 @@ class RBACRepository(BaseRepository):
 
     def create_cluster_role_binding(self, name: str,
                                      role_ref: client.V1RoleRef,
-                                     subjects: List[client.V1Subject],
+                                     subjects: List,
                                      labels: Optional[dict] = None) -> client.V1ClusterRoleBinding:
         """Create a ClusterRoleBinding."""
         metadata = client.V1ObjectMeta(name=name, labels=labels or {})
@@ -271,7 +271,7 @@ class RBACRepository(BaseRepository):
 
     def update_cluster_role_binding(self, name: str,
                                      role_ref: client.V1RoleRef,
-                                     subjects: List[client.V1Subject]) -> client.V1ClusterRoleBinding:
+                                     subjects: List) -> client.V1ClusterRoleBinding:
         """Update a ClusterRoleBinding."""
         binding = client.V1ClusterRoleBinding(
             metadata=client.V1ObjectMeta(name=name),
@@ -298,7 +298,7 @@ class RBACRepository(BaseRepository):
     def create_or_update_cluster_role_binding(
         self, name: str,
         role_ref: client.V1RoleRef,
-        subjects: List[client.V1Subject],
+        subjects: List,
         labels: Optional[dict] = None
     ) -> client.V1ClusterRoleBinding:
         """Create or update a ClusterRoleBinding."""
@@ -309,28 +309,27 @@ class RBACRepository(BaseRepository):
 
     # ==================== Helper Methods ====================
 
-    def create_service_account_subject(self, name: str, namespace: str) -> client.V1Subject:
+    def create_service_account_subject(self, name: str, namespace: str):
         """Create a ServiceAccount subject for bindings."""
-        return client.V1Subject(
+        return client.RbacV1Subject(
             api_group="",
             kind="ServiceAccount",
             name=name,
             namespace=namespace
         )
 
-    def create_group_subject(self, name: str,
-                              namespace: Optional[str] = None) -> client.V1Subject:
+    def create_group_subject(self, name: str, namespace: Optional[str] = None):
         """Create a Group subject for bindings."""
-        return client.V1Subject(
+        return client.RbacV1Subject(
             api_group="rbac.authorization.k8s.io",
             kind="Group",
             name=name,
             namespace=namespace
         )
 
-    def create_user_subject(self, name: str) -> client.V1Subject:
+    def create_user_subject(self, name: str):
         """Create a User subject for bindings."""
-        return client.V1Subject(
+        return client.RbacV1Subject(
             api_group="rbac.authorization.k8s.io",
             kind="User",
             name=name

@@ -40,15 +40,15 @@ rules:
     resources: ["configmaps"]
     verbs: ["get", "list", "watch"]
 
-  # RBAC - Roles
+  # RBAC - Roles (bind allows binding users to arbitrary Roles)
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["roles"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "bind", "escalate"]
 
-  # RBAC - ClusterRoles
+  # RBAC - ClusterRoles (bind allows binding users to arbitrary ClusterRoles)
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "bind", "escalate"]
 
   # RBAC - RoleBindings
   - apiGroups: ["rbac.authorization.k8s.io"]
