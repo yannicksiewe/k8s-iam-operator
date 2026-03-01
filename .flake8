@@ -1,0 +1,33 @@
+[flake8]
+max-line-length = 100
+max-complexity = 10
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    build,
+    dist,
+    *.egg-info,
+    .eggs,
+    .tox,
+    htmlcov,
+    .mypy_cache
+
+# Error codes to ignore
+ignore =
+    # E501: line too long (handled by max-line-length)
+    # W503: line break before binary operator (conflicts with W504)
+    W503,
+    # E203: whitespace before ':' (conflicts with black)
+    E203
+
+# Per-file ignores
+per-file-ignores =
+    # Allow unused imports in __init__.py
+    __init__.py: F401
+    # Allow assert in tests
+    tests/*: S101
+
+# McCabe complexity
+select = E,F,W,C,B
