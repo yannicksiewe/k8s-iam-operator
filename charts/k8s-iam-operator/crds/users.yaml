@@ -1,0 +1,73 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: users.k8sio.auth
+  labels:
+    app.kubernetes.io/part-of: k8s-iam-operator
+spec:
+  group: k8sio.auth
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              description: The specification of the user.
+              type: object
+              properties:
+                enabled:
+                  description: Whether to create user namespace and kubeconfig
+                  type: boolean
+                  default: false
+                CRoles:
+                  description: List of ClusterRole bindings for the user
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      namespace:
+                        description: Namespace where the binding applies
+                        type: string
+                        minLength: 1
+                        maxLength: 63
+                      clusterRole:
+                        description: Name of the ClusterRole to bind
+                        type: string
+                        minLength: 1
+                        maxLength: 253
+                      group:
+                        description: Optional group to include in the binding
+                        type: string
+                        minLength: 1
+                        maxLength: 63
+                    required:
+                      - namespace
+                      - clusterRole
+                Roles:
+                  description: List of Role names to bind in the user's namespace
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 253
+      additionalPrinterColumns:
+        - name: Enabled
+          type: boolean
+          jsonPath: .spec.enabled
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: users
+    singular: user
+    kind: User
+    listKind: UserList
+    categories:
+      - idp
+      - iam
+    shortNames:
+      - usr
