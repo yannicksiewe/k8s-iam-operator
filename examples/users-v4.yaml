@@ -1,0 +1,124 @@
+# Example User CRDs for k8s-iam-operator v4.0
+# Demonstrates the new user type system and namespace isolation features
+
+---
+# Human User - Developer
+# Creates:
+# - ServiceAccount in operator namespace
+# - Dedicated namespace "alice" with quota and network isolation
+# - Kubeconfig secret for cluster access
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: alice
+  namespace: iam
+spec:
+  type: human
+  namespaceConfig:
+    labels:
+      team: backend
+      environment: development
+    annotations:
+      description: "Developer namespace for Alice"
+    quota:
+      cpu: "4"
+      memory: "8Gi"
+      pods: "20"
+      services: "10"
+      persistentvolumeclaims: "5"
+    networkPolicy: isolated  # Only allow traffic from same namespace
+  CRoles:
+    - namespace: development
+      clusterRole: edit
+    - namespace: staging
+      clusterRole: view
+  Roles:
+    - app-secrets-reader
+
+---
+# Human User - Admin (no quota restrictions)
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: bob-admin
+  namespace: iam
+spec:
+  type: human
+  namespaceConfig:
+    labels:
+      team: platform
+      role: admin
+    networkPolicy: none  # No network restrictions
+  CRoles:
+    - clusterRole: cluster-admin  # Cluster-wide admin
+
+---
+# Human User - Restricted with full isolation
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: contractor
+  namespace: iam
+spec:
+  type: human
+  namespaceConfig:
+    labels:
+      access-level: restricted
+    quota:
+      cpu: "2"
+      memory: "4Gi"
+      pods: "10"
+    networkPolicy: restricted  # Deny all except DNS and same namespace
+  CRoles:
+    - namespace: contractor-projects
+      clusterRole: edit
+
+---
+# ServiceAccount User - For applications
+# Creates ServiceAccount in the target namespace (no dedicated namespace)
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: backend-api
+  namespace: iam
+spec:
+  type: serviceAccount
+  targetNamespace: production  # SA created here instead of iam namespace
+  CRoles:
+    - namespace: production
+      clusterRole: view
+    - namespace: production
+      clusterRole: secrets-reader
+  Roles:
+    - database-reader
+
+---
+# ServiceAccount User - CI/CD pipeline
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: github-actions
+  namespace: iam
+spec:
+  type: serviceAccount
+  targetNamespace: ci-cd
+  CRoles:
+    - namespace: staging
+      clusterRole: edit
+    - namespace: production
+      clusterRole: view
+    - clusterRole: namespace-creator  # Cluster-wide role
+
+---
+# Legacy format (still supported, deprecated)
+# enabled: true is equivalent to type: human
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: legacy-user
+  namespace: iam
+spec:
+  enabled: true  # Deprecated: use type: human instead
+  CRoles:
+    - namespace: default
+      clusterRole: view

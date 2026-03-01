@@ -1,7 +1,7 @@
 """Unit tests for UserService."""
 
 import pytest
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, call, ANY
 
 from app.services.user_service import UserService
 from app.exceptions import ValidationError, ResourceNotFoundError
@@ -17,7 +17,7 @@ class TestUserServiceCreate:
             sample_user_body, sample_user_spec, "default"
         )
 
-        assert result["status"] == "created"
+        assert result["state"] == "ready"
         assert result["serviceAccount"] == "test-user"
         mock_sa_repo.create.assert_called_once()
 
@@ -32,12 +32,17 @@ class TestUserServiceCreate:
 
     def test_create_user_enabled_creates_namespace(self, user_service, sample_user_body,
                                                     sample_user_spec, mock_ns_repo):
-        """Test that enabled user creates user namespace."""
+        """Test that enabled user creates user namespace with labels."""
         sample_user_spec["enabled"] = True
 
         user_service.create_user(sample_user_body, sample_user_spec, "default")
 
-        mock_ns_repo.ensure_exists.assert_called_with("test-user")
+        # Verify namespace is created with labels
+        mock_ns_repo.ensure_exists.assert_called_once()
+        call_args = mock_ns_repo.ensure_exists.call_args
+        assert call_args[0][0] == "test-user"  # First positional arg is namespace name
+        assert "labels" in call_args[1]
+        assert call_args[1]["labels"]["app.kubernetes.io/managed-by"] == "k8s-iam-operator"
 
     def test_create_user_disabled_skips_setup(self, user_service, sample_disabled_user_body,
                                                mock_secret_repo, mock_ns_repo):
@@ -68,6 +73,58 @@ class TestUserServiceCreate:
         # (we just verify no errors occurred)
         assert True
 
+    def test_create_user_with_type_human(self, user_service, mock_sa_repo, mock_ns_repo,
+                                          mock_secret_repo):
+        """Test creating user with explicit type: human."""
+        body = {
+            "metadata": {"name": "human-user", "namespace": "iam"},
+            "spec": {"type": "human", "CRoles": [], "Roles": []}
+        }
+        spec = {"type": "human", "CRoles": [], "Roles": []}
+
+        result = user_service.create_user(body, spec, "iam")
+
+        assert result["state"] == "ready"
+        mock_ns_repo.ensure_exists.assert_called_once()
+        mock_secret_repo.create_service_account_token.assert_called_once()
+
+    def test_create_user_with_type_serviceaccount(self, user_service, mock_sa_repo,
+                                                    mock_ns_repo, mock_secret_repo):
+        """Test creating user with explicit type: serviceAccount."""
+        body = {
+            "metadata": {"name": "sa-user", "namespace": "iam"},
+            "spec": {"type": "serviceAccount", "CRoles": [], "Roles": []}
+        }
+        spec = {"type": "serviceAccount", "CRoles": [], "Roles": []}
+
+        result = user_service.create_user(body, spec, "iam")
+
+        assert result["state"] == "ready"
+        mock_ns_repo.ensure_exists.assert_not_called()
+        mock_secret_repo.create_service_account_token.assert_not_called()
+
+    def test_create_user_with_target_namespace(self, user_service, mock_sa_repo):
+        """Test creating SA user with targetNamespace."""
+        body = {
+            "metadata": {"name": "app-sa", "namespace": "iam"},
+            "spec": {
+                "type": "serviceAccount",
+                "targetNamespace": "production",
+                "CRoles": [],
+                "Roles": []
+            }
+        }
+        spec = body["spec"]
+
+        result = user_service.create_user(body, spec, "iam")
+
+        # SA should be created in targetNamespace
+        mock_sa_repo.create.assert_called_once_with(
+            name="app-sa",
+            namespace="production"
+        )
+        assert result["namespace"] == "production"
+
 
 class TestUserServiceUpdate:
     """Tests for UserService.update_user method."""
@@ -79,7 +136,7 @@ class TestUserServiceUpdate:
             sample_user_body, sample_user_spec, "default"
         )
 
-        assert result["status"] == "updated"
+        assert result["state"] == "ready"
         mock_sa_repo.update.assert_called_once()
 
     def test_update_user_recreates_deleted_sa(self, user_service, sample_user_body,
@@ -118,7 +175,7 @@ class TestUserServiceDelete:
             sample_user_body, sample_user_spec, "default"
         )
 
-        assert result["status"] == "deleted"
+        assert result["state"] == "deleted"
         mock_sa_repo.delete.assert_called_once()
 
     def test_delete_user_enabled_deletes_namespace(self, user_service, sample_user_body,
@@ -141,7 +198,7 @@ class TestUserServiceDelete:
             sample_user_body, sample_user_spec, "default"
         )
 
-        assert result["status"] == "deleted"
+        assert result["state"] == "deleted"
 
     def test_delete_user_cleans_up_rbac(self, user_service, sample_user_body,
                                          sample_user_spec, rbac_service):

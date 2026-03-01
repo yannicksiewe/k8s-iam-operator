@@ -12,6 +12,8 @@ from app.repositories import (
     SecretRepository,
     RBACRepository,
 )
+from app.repositories.resource_quota_repository import ResourceQuotaRepository
+from app.repositories.network_policy_repository import NetworkPolicyRepository
 from app.services import (
     UserService,
     GroupService,
@@ -44,6 +46,8 @@ class ServiceContainer:
         self._sa_repo: Optional[ServiceAccountRepository] = None
         self._secret_repo: Optional[SecretRepository] = None
         self._rbac_repo: Optional[RBACRepository] = None
+        self._quota_repo: Optional[ResourceQuotaRepository] = None
+        self._network_policy_repo: Optional[NetworkPolicyRepository] = None
 
         # Services
         self._rbac_service: Optional[RBACService] = None
@@ -112,6 +116,20 @@ class ServiceContainer:
             self._rbac_repo = RBACRepository()
         return self._rbac_repo
 
+    @property
+    def resource_quota_repo(self) -> ResourceQuotaRepository:
+        """Get the resource quota repository."""
+        if self._quota_repo is None:
+            self._quota_repo = ResourceQuotaRepository()
+        return self._quota_repo
+
+    @property
+    def network_policy_repo(self) -> NetworkPolicyRepository:
+        """Get the network policy repository."""
+        if self._network_policy_repo is None:
+            self._network_policy_repo = NetworkPolicyRepository()
+        return self._network_policy_repo
+
     # ==================== Services ====================
 
     @property
@@ -145,6 +163,8 @@ class ServiceContainer:
                 secret_repo=self.secret_repo,
                 rbac_service=self.rbac_service,
                 kubeconfig_service=self.kubeconfig_service,
+                quota_repo=self.resource_quota_repo,
+                network_policy_repo=self.network_policy_repo,
                 audit_logger=self.audit_logger
             )
         return self._user_service

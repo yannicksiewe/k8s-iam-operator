@@ -16,31 +16,152 @@ spec:
               description: The specification of the user.
               type: object
               properties:
+                type:
+                  description: |
+                    Type of user:
+                    - human: Creates dedicated namespace + kubeconfig for interactive access
+                    - serviceAccount: Creates SA in targetNamespace for workload identity
+                  type: string
+                  enum:
+                    - human
+                    - serviceAccount
+                  default: serviceAccount
                 enabled:
+                  description: |
+                    (Deprecated) Use 'type: human' instead.
+                    When true, creates namespace and kubeconfig (same as type: human).
                   type: boolean
+                  default: false
+                targetNamespace:
+                  description: |
+                    For serviceAccount type: namespace where the SA will be created.
+                    If not specified, uses the same namespace as the User CR.
+                  type: string
+                  minLength: 1
+                namespaceConfig:
+                  description: Configuration for human user's dedicated namespace.
+                  type: object
+                  properties:
+                    labels:
+                      description: Labels to apply to the user's namespace.
+                      type: object
+                      additionalProperties:
+                        type: string
+                    annotations:
+                      description: Annotations to apply to the user's namespace.
+                      type: object
+                      additionalProperties:
+                        type: string
+                    quota:
+                      description: ResourceQuota for the user's namespace.
+                      type: object
+                      properties:
+                        cpu:
+                          description: CPU limit (e.g., "4", "2000m")
+                          type: string
+                        memory:
+                          description: Memory limit (e.g., "8Gi", "4096Mi")
+                          type: string
+                        pods:
+                          description: Maximum number of pods
+                          type: string
+                        services:
+                          description: Maximum number of services
+                          type: string
+                        persistentvolumeclaims:
+                          description: Maximum number of PVCs
+                          type: string
+                        secrets:
+                          description: Maximum number of secrets
+                          type: string
+                        configmaps:
+                          description: Maximum number of configmaps
+                          type: string
+                    networkPolicy:
+                      description: |
+                        Network policy mode for the namespace:
+                        - none: No network policy (default)
+                        - isolated: Deny all ingress except from same namespace
+                        - restricted: Deny all ingress/egress except DNS and same namespace
+                      type: string
+                      enum:
+                        - none
+                        - isolated
+                        - restricted
+                      default: none
                 CRoles:
+                  description: Cluster role bindings for this user.
                   type: array
                   items:
                     type: object
                     properties:
                       namespace:
+                        description: |
+                          Namespace to scope the binding. If omitted, creates
+                          ClusterRoleBinding (cluster-wide).
                         type: string
                         minLength: 1
                       clusterRole:
+                        description: Name of the ClusterRole to bind.
                         type: string
                         minLength: 1
                       group:
+                        description: Optional group to associate with this binding.
                         type: string
                         minLength: 1
-                    # Specify required fields within CRole
                     required:
-                      - namespace
                       - clusterRole
                 Roles:
+                  description: Role references for this user.
                   type: array
                   items:
-                     type: string
-                     minLength: 1
+                    type: string
+                    minLength: 1
+            status:
+              description: Status of the user resource.
+              type: object
+              properties:
+                state:
+                  description: Current state of the user.
+                  type: string
+                  enum:
+                    - pending
+                    - ready
+                    - error
+                message:
+                  description: Human-readable status message.
+                  type: string
+                serviceAccount:
+                  description: Name of the created ServiceAccount.
+                  type: string
+                namespace:
+                  description: Namespace where resources were created.
+                  type: string
+                kubeconfigSecret:
+                  description: Name of the kubeconfig secret (for human users).
+                  type: string
+                lastUpdated:
+                  description: Timestamp of last update.
+                  type: string
+                  format: date-time
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Type
+          type: string
+          jsonPath: .spec.type
+          description: User type (human or serviceAccount)
+        - name: State
+          type: string
+          jsonPath: .status.state
+          description: Current state
+        - name: Namespace
+          type: string
+          jsonPath: .status.namespace
+          description: Target namespace
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
   scope: Namespaced
   names:
     plural: users
@@ -48,6 +169,7 @@ spec:
     kind: User
     listKind: UserList
     categories:
+      - iam
       - idp
     shortNames:
       - usr

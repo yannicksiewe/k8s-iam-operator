@@ -376,6 +376,123 @@ def validate_role_spec(spec: dict) -> dict:
     return {"rules": validated_rules}
 
 
+def validate_user_type(user_type: str) -> str:
+    """Validate user type field.
+
+    Args:
+        user_type: The user type to validate
+
+    Returns:
+        Validated user type
+
+    Raises:
+        ValidationError: If validation fails
+    """
+    valid_types = {"human", "serviceAccount"}
+    if user_type not in valid_types:
+        raise ValidationError(
+            "type",
+            f"type must be one of: {', '.join(valid_types)}",
+            user_type
+        )
+    return user_type
+
+
+def validate_resource_quantity(value: str, field_name: str) -> str:
+    """Validate a Kubernetes resource quantity string.
+
+    Args:
+        value: The quantity string (e.g., "4", "2000m", "8Gi")
+        field_name: Name of the field for error messages
+
+    Returns:
+        The validated quantity string
+
+    Raises:
+        ValidationError: If validation fails
+    """
+    # Pattern for Kubernetes resource quantities
+    quantity_pattern = re.compile(
+        r'^[0-9]+(\.[0-9]+)?(m|Ki|Mi|Gi|Ti|Pi|Ei|k|M|G|T|P|E)?$'
+    )
+    if not quantity_pattern.match(value):
+        raise ValidationError(
+            field_name,
+            f"Invalid resource quantity format: {value}",
+            value
+        )
+    return value
+
+
+def validate_namespace_config(config: dict) -> dict:
+    """Validate namespace configuration for human users.
+
+    Args:
+        config: The namespace config dict
+
+    Returns:
+        Validated config dict
+
+    Raises:
+        ValidationError: If validation fails
+    """
+    if not isinstance(config, dict):
+        raise ValidationError("namespaceConfig", "namespaceConfig must be an object")
+
+    validated = {}
+
+    # Validate labels
+    labels = config.get("labels", {})
+    if not isinstance(labels, dict):
+        raise ValidationError("namespaceConfig.labels", "labels must be an object")
+    for key, value in labels.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise ValidationError(
+                "namespaceConfig.labels",
+                "label keys and values must be strings"
+            )
+    validated["labels"] = labels
+
+    # Validate annotations
+    annotations = config.get("annotations", {})
+    if not isinstance(annotations, dict):
+        raise ValidationError("namespaceConfig.annotations", "annotations must be an object")
+    for key, value in annotations.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise ValidationError(
+                "namespaceConfig.annotations",
+                "annotation keys and values must be strings"
+            )
+    validated["annotations"] = annotations
+
+    # Validate quota
+    quota = config.get("quota")
+    if quota is not None:
+        if not isinstance(quota, dict):
+            raise ValidationError("namespaceConfig.quota", "quota must be an object")
+        validated_quota = {}
+        for field in ["cpu", "memory", "pods", "services",
+                      "persistentvolumeclaims", "secrets", "configmaps"]:
+            if field in quota:
+                validated_quota[field] = validate_resource_quantity(
+                    quota[field], f"namespaceConfig.quota.{field}"
+                )
+        validated["quota"] = validated_quota
+
+    # Validate networkPolicy
+    network_policy = config.get("networkPolicy", "none")
+    valid_policies = {"none", "isolated", "restricted"}
+    if network_policy not in valid_policies:
+        raise ValidationError(
+            "namespaceConfig.networkPolicy",
+            f"networkPolicy must be one of: {', '.join(valid_policies)}",
+            network_policy
+        )
+    validated["networkPolicy"] = network_policy
+
+    return validated
+
+
 def validate_user_spec(spec: dict) -> dict:
     """Validate a complete User CRD spec.
 
@@ -393,11 +510,26 @@ def validate_user_spec(spec: dict) -> dict:
 
     validated = {}
 
-    # Validate enabled flag
+    # Validate type (new field)
+    user_type = spec.get("type")
+    if user_type is not None:
+        validated["type"] = validate_user_type(user_type)
+
+    # Validate enabled flag (legacy, deprecated)
     enabled = spec.get("enabled", False)
     if not isinstance(enabled, bool):
         raise ValidationError("enabled", "enabled must be a boolean")
     validated["enabled"] = enabled
+
+    # Validate targetNamespace
+    target_namespace = spec.get("targetNamespace")
+    if target_namespace is not None:
+        validated["targetNamespace"] = validate_namespace(target_namespace, allow_reserved=True)
+
+    # Validate namespaceConfig
+    namespace_config = spec.get("namespaceConfig")
+    if namespace_config is not None:
+        validated["namespaceConfig"] = validate_namespace_config(namespace_config)
 
     # Validate CRoles
     croles = spec.get("CRoles", [])
