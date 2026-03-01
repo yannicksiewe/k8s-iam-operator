@@ -4,15 +4,115 @@ This module defines a hierarchy of exceptions for clean error handling
 across the operator codebase.
 """
 
-from typing import Optional, Any
+import re
+from typing import Optional, Any, Set
+
+
+# Sensitive field names that should be redacted in logs and error messages
+SENSITIVE_FIELDS: Set[str] = {
+    'token',
+    'password',
+    'secret',
+    'kubeconfig',
+    'ca_cert',
+    'ca_data',
+    'client_certificate',
+    'client_key',
+    'bearer_token',
+    'api_key',
+    'credentials',
+    'private_key',
+    'auth',
+    'authorization',
+}
+
+# Pattern to match sensitive data in strings (e.g., base64-encoded tokens)
+SENSITIVE_PATTERNS = [
+    # Bearer tokens
+    (re.compile(r'(Bearer\s+)[A-Za-z0-9+/=_-]+', re.IGNORECASE), r'\1[REDACTED]'),
+    # Base64-encoded data (long strings)
+    (re.compile(r'(["\']?)([A-Za-z0-9+/]{50,}=*)\1'), r'\1[REDACTED]\1'),
+    # Kubernetes tokens
+    (re.compile(r'(token["\s:=]+)[A-Za-z0-9._-]+', re.IGNORECASE), r'\1[REDACTED]'),
+]
+
+
+def sanitize_value(value: Any, field_name: str = '') -> Any:
+    """Sanitize a value by redacting sensitive information.
+
+    Args:
+        value: The value to sanitize
+        field_name: Optional field name to check against sensitive fields
+
+    Returns:
+        Sanitized value with sensitive data redacted
+    """
+    # Check if field name indicates sensitive data
+    field_lower = field_name.lower()
+    for sensitive in SENSITIVE_FIELDS:
+        if sensitive in field_lower:
+            if isinstance(value, str) and len(value) > 0:
+                return '[REDACTED]'
+            elif isinstance(value, (bytes, bytearray)):
+                return '[REDACTED]'
+
+    # For strings, apply pattern-based redaction
+    if isinstance(value, str):
+        result = value
+        for pattern, replacement in SENSITIVE_PATTERNS:
+            result = pattern.sub(replacement, result)
+        return result
+
+    # For dictionaries, recursively sanitize
+    if isinstance(value, dict):
+        return sanitize_dict(value)
+
+    # For lists, sanitize each element
+    if isinstance(value, (list, tuple)):
+        return [sanitize_value(item) for item in value]
+
+    return value
+
+
+def sanitize_dict(data: dict) -> dict:
+    """Sanitize a dictionary by redacting sensitive fields.
+
+    Args:
+        data: Dictionary that may contain sensitive information
+
+    Returns:
+        New dictionary with sensitive values redacted
+    """
+    if not isinstance(data, dict):
+        return data
+
+    result = {}
+    for key, value in data.items():
+        result[key] = sanitize_value(value, key)
+    return result
+
+
+def sanitize_message(message: str) -> str:
+    """Sanitize an error message by redacting sensitive patterns.
+
+    Args:
+        message: Error message that may contain sensitive data
+
+    Returns:
+        Message with sensitive data redacted
+    """
+    result = message
+    for pattern, replacement in SENSITIVE_PATTERNS:
+        result = pattern.sub(replacement, result)
+    return result
 
 
 class OperatorError(Exception):
     """Base exception for all operator errors."""
 
     def __init__(self, message: str, details: Optional[dict] = None):
-        self.message = message
-        self.details = details or {}
+        self.message = sanitize_message(message)
+        self.details = sanitize_dict(details or {})
         super().__init__(self.message)
 
     def to_dict(self) -> dict:
@@ -22,6 +122,14 @@ class OperatorError(Exception):
             "message": self.message,
             "details": self.details,
         }
+
+    def __str__(self) -> str:
+        """Return sanitized string representation."""
+        return self.message
+
+    def __repr__(self) -> str:
+        """Return sanitized repr."""
+        return f"{self.__class__.__name__}({self.message!r})"
 
 
 class ValidationError(OperatorError):

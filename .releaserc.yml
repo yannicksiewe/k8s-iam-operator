@@ -1,0 +1,137 @@
+# Semantic Release Configuration
+# https://semantic-release.gitbook.io/semantic-release/
+
+branches:
+  - main
+  - name: "release/*"
+    prerelease: false
+  - name: "beta"
+    prerelease: true
+  - name: "alpha"
+    prerelease: true
+
+plugins:
+  # Analyze commits to determine release type
+  - - "@semantic-release/commit-analyzer"
+    - preset: conventionalcommits
+      releaseRules:
+        - type: feat
+          release: minor
+        - type: fix
+          release: patch
+        - type: perf
+          release: patch
+        - type: revert
+          release: patch
+        - type: docs
+          scope: README
+          release: patch
+        - type: refactor
+          release: patch
+        - type: style
+          release: false
+        - type: chore
+          release: false
+        - type: test
+          release: false
+        - type: ci
+          release: false
+        - breaking: true
+          release: major
+      parserOpts:
+        noteKeywords:
+          - BREAKING CHANGE
+          - BREAKING CHANGES
+          - BREAKING
+
+  # Generate release notes
+  - - "@semantic-release/release-notes-generator"
+    - preset: conventionalcommits
+      presetConfig:
+        types:
+          - type: feat
+            section: "Features"
+            hidden: false
+          - type: fix
+            section: "Bug Fixes"
+            hidden: false
+          - type: perf
+            section: "Performance Improvements"
+            hidden: false
+          - type: revert
+            section: "Reverts"
+            hidden: false
+          - type: docs
+            section: "Documentation"
+            hidden: false
+          - type: refactor
+            section: "Code Refactoring"
+            hidden: false
+          - type: style
+            section: "Styles"
+            hidden: true
+          - type: chore
+            section: "Miscellaneous Chores"
+            hidden: true
+          - type: test
+            section: "Tests"
+            hidden: true
+          - type: ci
+            section: "Continuous Integration"
+            hidden: true
+
+  # Update CHANGELOG.md
+  - - "@semantic-release/changelog"
+    - changelogFile: CHANGELOG.md
+      changelogTitle: |
+        # Changelog
+
+        All notable changes to k8s-iam-operator will be documented in this file.
+
+        The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+        and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+  # Update version in files
+  - - "@semantic-release/exec"
+    - prepareCmd: |
+        # Update Python version
+        echo "__version__ = \"${nextRelease.version}\"" > app/version.py
+
+        # Update Helm chart
+        sed -i "s/^version:.*/version: ${nextRelease.version}/" charts/k8s-iam-operator/Chart.yaml
+        sed -i "s/^appVersion:.*/appVersion: \"${nextRelease.version}\"/" charts/k8s-iam-operator/Chart.yaml
+
+  # Commit the changes
+  - - "@semantic-release/git"
+    - assets:
+        - CHANGELOG.md
+        - app/version.py
+        - charts/k8s-iam-operator/Chart.yaml
+      message: |
+        chore(release): ${nextRelease.version} [skip ci]
+
+        ${nextRelease.notes}
+
+  # Create GitHub release
+  - - "@semantic-release/github"
+    - assets:
+        - path: charts/k8s-iam-operator
+          label: Helm Chart
+      successComment: |
+        :tada: This PR is included in version ${nextRelease.version} :tada:
+
+        The release is available on:
+        - [GitHub Release](${releases.filter(r => r.name === 'GitHub').pop().url})
+        - [Container Registry](https://quay.io/repository/yannick_siewe/k8s-iam-operator?tag=${nextRelease.version})
+
+      failComment: |
+        :x: The release from this PR failed.
+
+        Please check the [CI logs](${process.env.CI_URL || 'the CI system'}) for more details.
+
+# Disable running release on CI for dry runs
+# Set to true in CI environment
+# dryRun: false
+
+# Tag format
+tagFormat: "v${version}"

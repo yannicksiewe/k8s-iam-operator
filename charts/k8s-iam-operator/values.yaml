@@ -124,6 +124,64 @@ serviceMonitor:
   # Path for metrics endpoint
   path: /actuator/metrics
 
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+  # Scaling behavior configuration
+  behavior: {}
+  # scaleDown:
+  #   stabilizationWindowSeconds: 300
+  #   policies:
+  #   - type: Percent
+  #     value: 10
+  #     periodSeconds: 60
+  # scaleUp:
+  #   stabilizationWindowSeconds: 0
+  #   policies:
+  #   - type: Percent
+  #     value: 100
+  #     periodSeconds: 15
+
+# PrometheusRule for alerting
+prometheusRule:
+  enabled: false
+  # Additional labels for the PrometheusRule
+  additionalLabels: {}
+  # Labels to add to all alerts
+  alertLabels: {}
+  # Base URL for runbook links
+  runbookUrl: "https://github.com/yannick-siewe/k8s-iam-operator/blob/main/docs/runbooks"
+  # Additional alerting rules
+  additionalRules: []
+  # - alert: CustomAlert
+  #   expr: some_metric > threshold
+  #   for: 5m
+  #   labels:
+  #     severity: warning
+  #   annotations:
+  #     summary: "Custom alert triggered"
+
+# Grafana Dashboard ConfigMap
+grafanaDashboard:
+  enabled: false
+  # Namespace to create the ConfigMap in (default: release namespace)
+  namespace: ""
+  # Additional labels for the ConfigMap
+  labels: {}
+  # Annotations for the ConfigMap
+  annotations: {}
+
+# Create namespace with Pod Security Standards labels
+createNamespace: false
+# Additional labels for the namespace
+namespaceLabels: {}
+# Annotations for the namespace
+namespaceAnnotations: {}
+
 # Extra environment variables
 extraEnv: []
 # - name: MY_VAR
