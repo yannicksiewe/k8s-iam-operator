@@ -11,22 +11,24 @@ from app.exceptions import OperatorError, ValidationError
 logger = logging.getLogger(__name__)
 
 
-def create_user_handler(body: dict, spec: dict, **kwargs) -> dict:
+def create_user_handler(body: dict, spec, **kwargs) -> dict:
     """Handle User CRD creation.
 
     Args:
         body: The full Kopf body object
-        spec: The spec portion of the CRD
+        spec: The spec portion of the CRD (may be kopf.Body)
         **kwargs: Additional Kopf kwargs (includes namespace, name, etc.)
 
     Returns:
         Status dict for Kopf
     """
     namespace = kwargs.get('namespace', 'default')
+    # Convert spec to dict if it's a kopf.Body object
+    spec_dict = dict(spec) if spec else {}
 
     try:
         container = get_container()
-        result = container.user_service.create_user(body, spec, namespace)
+        result = container.user_service.create_user(dict(body), spec_dict, namespace)
         return result
     except ValidationError as e:
         logger.error(f"Validation error creating user: {e.message}")
@@ -39,22 +41,23 @@ def create_user_handler(body: dict, spec: dict, **kwargs) -> dict:
         return {"error": str(e)}
 
 
-def update_user_handler(body: dict, spec: dict, **kwargs) -> dict:
+def update_user_handler(body: dict, spec, **kwargs) -> dict:
     """Handle User CRD update.
 
     Args:
         body: The full Kopf body object
-        spec: The spec portion of the CRD
+        spec: The spec portion of the CRD (may be kopf.Body)
         **kwargs: Additional Kopf kwargs
 
     Returns:
         Status dict for Kopf
     """
     namespace = kwargs.get('namespace', 'default')
+    spec_dict = dict(spec) if spec else {}
 
     try:
         container = get_container()
-        result = container.user_service.update_user(body, spec, namespace)
+        result = container.user_service.update_user(dict(body), spec_dict, namespace)
         return result
     except ValidationError as e:
         logger.error(f"Validation error updating user: {e.message}")
@@ -67,22 +70,23 @@ def update_user_handler(body: dict, spec: dict, **kwargs) -> dict:
         return {"error": str(e)}
 
 
-def delete_user_handler(body: dict, spec: dict, **kwargs) -> dict:
+def delete_user_handler(body: dict, spec, **kwargs) -> dict:
     """Handle User CRD deletion.
 
     Args:
         body: The full Kopf body object
-        spec: The spec portion of the CRD
+        spec: The spec portion of the CRD (may be kopf.Body)
         **kwargs: Additional Kopf kwargs
 
     Returns:
         Status dict for Kopf
     """
     namespace = kwargs.get('namespace', 'default')
+    spec_dict = dict(spec) if spec else {}
 
     try:
         container = get_container()
-        result = container.user_service.delete_user(body, spec, namespace)
+        result = container.user_service.delete_user(dict(body), spec_dict, namespace)
         return result
     except OperatorError as e:
         logger.error(f"Error deleting user: {e.message}")
