@@ -4,14 +4,10 @@ import logging
 import time
 from typing import Optional
 
-from app.models.role import Role, ClusterRole, RoleSpec
 from app.repositories.rbac_repository import RBACRepository
 from app.repositories.namespace_repository import NamespaceRepository
 from app.validators import validate_role_name, validate_role_spec
-from app.exceptions import (
-    ResourceNotFoundError,
-    ValidationError,
-)
+from app.exceptions import ResourceNotFoundError
 from app.utils.audit import AuditLogger
 
 logger = logging.getLogger(__name__)

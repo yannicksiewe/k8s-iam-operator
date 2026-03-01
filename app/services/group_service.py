@@ -10,11 +10,7 @@ from app.models.group import Group
 from app.config import Config
 from app.services.rbac_service import RBACService
 from app.validators import validate_group_name, validate_group_spec
-from app.exceptions import (
-    OperatorError,
-    ResourceNotFoundError,
-    KubernetesAPIError,
-)
+# Exceptions used for documentation
 from app.utils.audit import AuditLogger
 
 logger = logging.getLogger(__name__)

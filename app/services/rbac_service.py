@@ -1,15 +1,13 @@
 """RBAC service for managing role bindings."""
 
 import logging
-from typing import List, Optional, Set, Tuple
-
-from kubernetes import client
+from typing import Optional, Set, Tuple
 
 from app.models.user import User, ClusterRoleBinding as CRoleBinding
 from app.models.group import Group
 from app.repositories.rbac_repository import RBACRepository
 from app.repositories.namespace_repository import NamespaceRepository
-from app.exceptions import ResourceNotFoundError, RBACError
+from app.exceptions import ResourceNotFoundError
 from app.utils.audit import AuditLogger
 
 logger = logging.getLogger(__name__)
