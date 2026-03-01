@@ -79,14 +79,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Trivy
+        run: |
+          TRIVY_VERSION="0.58.2"
+          wget -qO- "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | tar xz -C /usr/local/bin trivy
+
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.34.1
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
-          ignore-unfixed: true
+        run: |
+          trivy fs --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed .
 
   build-image:
     name: Build Docker Image
@@ -142,14 +142,14 @@ jobs:
           name: docker-image
           path: /tmp
 
+      - name: Install Trivy
+        run: |
+          TRIVY_VERSION="0.58.2"
+          wget -qO- "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | tar xz -C /usr/local/bin trivy
+
       - name: Run Trivy image scan
-        uses: aquasecurity/trivy-action@0.34.1
-        with:
-          input: /tmp/image.tar
-          format: 'table'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
-          ignore-unfixed: true
+        run: |
+          trivy image --input /tmp/image.tar --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed
 
   integration-tests:
     name: Integration Tests
