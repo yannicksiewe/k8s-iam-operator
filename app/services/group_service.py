@@ -4,6 +4,7 @@ import logging
 from typing import Optional
 
 from kubernetes import client
+from kubernetes.client.rest import ApiException
 
 from app.models.group import Group
 from app.config import Config
@@ -158,7 +159,7 @@ class GroupService:
                 body=client.V1DeleteOptions(),
             )
             logger.info(f"Deleted Group custom resource '{group.name}'")
-        except client.rest.ApiException as e:
+        except ApiException as e:
             if e.status != 404:
                 logger.error(f"Error deleting Group custom resource: {e.reason}")
             else:
