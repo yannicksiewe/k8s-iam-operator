@@ -1,5 +1,19 @@
 # Changelog
 
+All notable changes to k8s-iam-operator will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+
+## [3.0.1](https://github.com/yannicksiewe/k8s-iam-operator/compare/v3.0.0...v3.0.1) (2026-03-01)
+
+### Bug Fixes
+
+* **ci:** add checkout step to image-scan job ([7970d35](https://github.com/yannicksiewe/k8s-iam-operator/commit/7970d35ccb91e6ee6fa88c8ac9dbbfce3334fd42))
+
+# Changelog
+
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 ## 1.1.0 (2023-11-29)
