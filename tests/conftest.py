@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock
 from typing import Dict, Any
 
-from app.models.user import User, ClusterRoleBinding
+from app.models.user import User
 from app.models.group import Group
 from app.models.role import Role, ClusterRole
 from app.repositories import (
