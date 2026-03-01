@@ -1,12 +1,12 @@
 """Pytest fixtures for k8s-iam-operator tests."""
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from typing import Dict, Any
 
-from app.models.user import User, UserSpec, ClusterRoleBinding
-from app.models.group import Group, GroupSpec
-from app.models.role import Role, ClusterRole, RoleSpec, PolicyRule
+from app.models.user import User, ClusterRoleBinding
+from app.models.group import Group
+from app.models.role import Role, ClusterRole
 from app.repositories import (
     NamespaceRepository,
     ServiceAccountRepository,
