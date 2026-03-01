@@ -1,8 +1,10 @@
 import setuptools
 
+from app.version import __version__
+
 setuptools.setup(
     name="k8s-iam-operator",
-    version="1.0.0",
+    version=__version__,
     author="Yannick Siewe",
     author_email="yannick.siewe@gmail.com",
     description="This Kubernetes operator purpose is to facilitate user management in kubernetes base on RBAC",
