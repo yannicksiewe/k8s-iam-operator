@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.1.1](https://github.com/yannicksiewe/k8s-iam-operator/compare/v4.1.0...v4.1.1) (2026-03-04)
+
+### Bug Fixes
+
+* use max() in dashboard queries to dedupe multi-replica metrics ([9832fb5](https://github.com/yannicksiewe/k8s-iam-operator/commit/9832fb5d6ef24175653bc22f6246591cd6b19cc4))
+
 ## [4.1.0](https://github.com/yannicksiewe/k8s-iam-operator/compare/v4.0.0...v4.1.0) (2026-03-04)
 
 ### Features
