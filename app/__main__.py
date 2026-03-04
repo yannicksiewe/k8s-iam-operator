@@ -9,6 +9,7 @@ import logging
 
 from app.kopf_handlers import main as kopf_main
 from app.api import create_app
+from app.metrics_collector import start_metrics_collector
 
 # Suppress specific FutureWarnings from dependencies
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -41,6 +42,9 @@ if __name__ == "__main__":
     # Start Kopf in a separate thread
     kopf_thread = threading.Thread(target=kopf_main, daemon=True)
     kopf_thread.start()
+
+    # Start metrics collector in a background thread
+    start_metrics_collector()
 
     # Start Flask app in the main thread
     run_flask_app()

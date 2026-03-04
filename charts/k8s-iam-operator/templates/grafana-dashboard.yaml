@@ -66,7 +66,7 @@ data:
           "pluginVersion": "9.5.0",
           "targets": [
             {
-              "expr": "up{job=~\".*k8s-iam-operator.*\"}",
+              "expr": "k8s_iam_operator_info",
               "refId": "A"
             }
           ],
@@ -94,7 +94,7 @@ data:
           "pluginVersion": "9.5.0",
           "targets": [
             {
-              "expr": "count(kube_customresource_users_k8sio_auth)",
+              "expr": "sum(k8s_iam_operator_users_total)",
               "legendFormat": "Users",
               "refId": "A"
             }
@@ -123,7 +123,7 @@ data:
           "pluginVersion": "9.5.0",
           "targets": [
             {
-              "expr": "count(kube_customresource_groups_k8sio_auth)",
+              "expr": "sum(k8s_iam_operator_groups_total)",
               "legendFormat": "Groups",
               "refId": "A"
             }
@@ -152,7 +152,7 @@ data:
           "pluginVersion": "9.5.0",
           "targets": [
             {
-              "expr": "count(kube_customresource_roles_k8sio_auth)",
+              "expr": "sum(k8s_iam_operator_roles_total)",
               "legendFormat": "Roles",
               "refId": "A"
             }
@@ -204,7 +204,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(kopf_handler_duration_seconds_count[5m])) by (handler)",
+              "expr": "sum(rate(k8s_iam_operator_reconciliations_total[5m])) by (resource)",
               "legendFormat": "{{`{{handler}}`}}",
               "refId": "A"
             }
@@ -248,12 +248,12 @@ data:
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kopf_handler_duration_seconds_bucket[5m])) by (le, handler))",
+              "expr": "histogram_quantile(0.99, sum(rate(k8s_iam_operator_handler_duration_seconds_bucket[5m])) by (le, handler))",
               "legendFormat": "{{`{{handler}}`}} p99",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.50, sum(rate(kopf_handler_duration_seconds_bucket[5m])) by (le, handler))",
+              "expr": "histogram_quantile(0.50, sum(rate(k8s_iam_operator_handler_duration_seconds_bucket[5m])) by (le, handler))",
               "legendFormat": "{{`{{handler}}`}} p50",
               "refId": "B"
             }
@@ -297,7 +297,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(kopf_handler_errors_total[5m])",
+              "expr": "increase(k8s_iam_operator_handler_errors_total[5m])",
               "legendFormat": "{{`{{handler}}`}}",
               "refId": "A"
             }

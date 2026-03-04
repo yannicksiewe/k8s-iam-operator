@@ -260,6 +260,11 @@ def set_groups_total(namespace: str, count: int) -> None:
     GROUPS_TOTAL.labels(namespace=namespace).set(count)
 
 
+def set_roles_total(namespace: str, kind: str, count: int) -> None:
+    """Set total roles gauge."""
+    ROLES_TOTAL.labels(namespace=namespace, kind=kind).set(count)
+
+
 # Role metrics
 def record_role_created(namespace: str, kind: str) -> None:
     """Record a role creation."""
