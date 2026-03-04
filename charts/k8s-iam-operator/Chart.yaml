@@ -3,8 +3,8 @@ name: k8s-iam-operator
 description: A Kubernetes operator for IAM management using Custom Resource Definitions
 
 type: application
-version: 4.1.1
-appVersion: "4.1.1"
+version: 4.1.2
+appVersion: "4.1.2"
 
 home: https://github.com/yannick-siewe/k8s-iam-operator
 sources:
