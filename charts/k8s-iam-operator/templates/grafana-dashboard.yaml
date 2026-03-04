@@ -94,7 +94,7 @@ data:
           "pluginVersion": "9.5.0",
           "targets": [
             {
-              "expr": "sum(k8s_iam_operator_users_total)",
+              "expr": "sum(max by (namespace, user_type) (k8s_iam_operator_users_total))",
               "legendFormat": "Users",
               "refId": "A"
             }
@@ -123,7 +123,7 @@ data:
           "pluginVersion": "9.5.0",
           "targets": [
             {
-              "expr": "sum(k8s_iam_operator_groups_total)",
+              "expr": "sum(max by (namespace) (k8s_iam_operator_groups_total))",
               "legendFormat": "Groups",
               "refId": "A"
             }
@@ -152,7 +152,7 @@ data:
           "pluginVersion": "9.5.0",
           "targets": [
             {
-              "expr": "sum(k8s_iam_operator_roles_total)",
+              "expr": "sum(max by (namespace, kind) (k8s_iam_operator_roles_total))",
               "legendFormat": "Roles",
               "refId": "A"
             }
