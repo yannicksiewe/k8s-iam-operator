@@ -229,6 +229,5 @@ def start_metrics_collector():
 
 def stop_metrics_collector():
     """Stop the global metrics collector."""
-    global _collector
     if _collector:
         _collector.stop()
