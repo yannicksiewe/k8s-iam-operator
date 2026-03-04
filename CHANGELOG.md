@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.1.0](https://github.com/yannicksiewe/k8s-iam-operator/compare/v4.0.0...v4.1.0) (2026-03-04)
+
+### Features
+
+* add metrics collector for User, Group, and Role CRD counts ([3869994](https://github.com/yannicksiewe/k8s-iam-operator/commit/3869994db09c8cb7336b6570d9df99404ed0463f))
+
+### Bug Fixes
+
+* remove unused global declaration in stop_metrics_collector ([4eadfc1](https://github.com/yannicksiewe/k8s-iam-operator/commit/4eadfc1a9fee5de898f922ab53363572d4cc15d2))
+
 ## [4.0.0](https://github.com/yannicksiewe/k8s-iam-operator/compare/v3.1.1...v4.0.0) (2026-03-01)
 
 ### Features
