@@ -128,13 +128,22 @@ This creates a NetworkPolicy that:
 ### RBAC Best Practices
 
 1. **Principle of least privilege**: The operator only requests necessary permissions
-2. **Audit operator actions**: Enable audit logging
+2. **Audit operator actions**: Enable audit logging (see [Audit & Compliance Guide](./audit.md))
 3. **Review ClusterRole**: Periodically audit operator permissions
 
 ```bash
 # Review operator permissions
 kubectl get clusterrole k8s-iam-operator -o yaml
 ```
+
+### Audit Logging
+
+The operator provides built-in audit logging for IAM operations. For comprehensive user activity tracking, enable Kubernetes API server audit logging. See the [Audit & Compliance Guide](./audit.md) for:
+
+- Operator audit log format and configuration
+- Kubernetes API server audit setup
+- Correlating IAM users with API activity
+- Log aggregation recommendations
 
 ### Secret Management
 

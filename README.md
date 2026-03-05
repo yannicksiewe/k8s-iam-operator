@@ -143,6 +143,7 @@ spec:
 
 - [Architecture](docs/architecture.md)
 - [Production Guide](docs/production-guide.md)
+- [Audit & Compliance](docs/audit.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Upgrade Guide](docs/upgrade-guide.md)
 - [SLO Documentation](docs/slo.md)

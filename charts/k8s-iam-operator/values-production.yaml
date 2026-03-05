@@ -95,8 +95,15 @@ prometheusRule:
     team: platform
   runbookUrl: "https://github.com/yannick-siewe/k8s-iam-operator/blob/main/docs/runbooks"
 
-# Enable Grafana dashboard
+# Enable Grafana dashboard (Operator Metrics)
 grafanaDashboard:
+  enabled: true
+  labels:
+    grafana_dashboard: "1"
+
+# Enable Grafana Audit Dashboard (User Activity)
+# Requires Loki with K8s API audit logs - see docs/audit.md
+grafanaAuditDashboard:
   enabled: true
   labels:
     grafana_dashboard: "1"

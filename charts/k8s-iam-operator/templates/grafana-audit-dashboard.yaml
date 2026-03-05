@@ -1,0 +1,537 @@
+{{- if .Values.grafanaAuditDashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "k8s-iam-operator.fullname" . }}-audit-dashboard
+  namespace: {{ .Values.grafanaAuditDashboard.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "k8s-iam-operator.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+    {{- with .Values.grafanaAuditDashboard.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.grafanaAuditDashboard.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  k8s-iam-operator-audit.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [
+        {
+          "asDropdown": false,
+          "icon": "external link",
+          "includeVars": false,
+          "keepTime": true,
+          "tags": ["k8s-iam-operator"],
+          "targetBlank": true,
+          "title": "IAM Operator Dashboard",
+          "type": "dashboards"
+        }
+      ],
+      "liveNow": false,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+          "id": 1,
+          "panels": [],
+          "title": "User Activity Overview",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "mappings": [],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+          "id": 2,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({job=\"kube-apiserver-audit\"} | json | user_username=~\"system:serviceaccount:.*\" [$__range]))",
+              "legendFormat": "Total",
+              "refId": "A"
+            }
+          ],
+          "title": "Total API Calls (ServiceAccounts)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "mappings": [],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+          "id": 3,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({job=\"kube-apiserver-audit\"} | json | responseStatus_code >= 400 [$__range]))",
+              "legendFormat": "Errors",
+              "refId": "A"
+            }
+          ],
+          "title": "Failed Requests",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "mappings": [],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({job=\"kube-apiserver-audit\"} | json | responseStatus_code = 403 [$__range]))",
+              "legendFormat": "Forbidden",
+              "refId": "A"
+            }
+          ],
+          "title": "Forbidden (403)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "mappings": [],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+          "id": 5,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {"calcs": ["count"], "fields": "", "values": false},
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "count(sum by (user_username) (count_over_time({job=\"kube-apiserver-audit\"} | json | user_username=~\"system:serviceaccount:.*\" [$__range])))",
+              "legendFormat": "Users",
+              "refId": "A"
+            }
+          ],
+          "title": "Active ServiceAccounts",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+          "id": 10,
+          "panels": [],
+          "title": "Activity by User/ServiceAccount",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "bars",
+                "fillOpacity": 100,
+                "gradientMode": "none",
+                "hideFrom": {"legend": false, "tooltip": false, "viz": false},
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {"type": "linear"},
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {"group": "A", "mode": "normal"},
+                "thresholdsStyle": {"mode": "off"}
+              },
+              "mappings": [],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+          "id": 11,
+          "options": {
+            "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "right", "showLegend": true, "sortBy": "Total", "sortDesc": true},
+            "tooltip": {"mode": "multi", "sort": "desc"}
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "sum by (user_username) (count_over_time({job=\"kube-apiserver-audit\"} | json | user_username=~\"system:serviceaccount:${namespace}:.*\" [$__interval]))",
+              "legendFormat": "{{`{{user_username}}`}}",
+              "refId": "A"
+            }
+          ],
+          "title": "API Calls by ServiceAccount",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"hideFrom": {"legend": false, "tooltip": false, "viz": false}},
+              "mappings": []
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+          "id": 12,
+          "options": {
+            "legend": {"displayMode": "table", "placement": "right", "showLegend": true, "values": ["value", "percent"]},
+            "pieType": "pie",
+            "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+            "tooltip": {"mode": "single", "sort": "none"}
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "sum by (verb) (count_over_time({job=\"kube-apiserver-audit\"} | json | user_username=~\"system:serviceaccount:${namespace}:.*\" [$__range]))",
+              "legendFormat": "{{`{{verb}}`}}",
+              "refId": "A"
+            }
+          ],
+          "title": "API Calls by Verb",
+          "type": "piechart"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 14},
+          "id": 20,
+          "panels": [],
+          "title": "Resource Access",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {
+                "align": "auto",
+                "cellOptions": {"type": "auto"},
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+            },
+            "overrides": [
+              {
+                "matcher": {"id": "byName", "options": "Count"},
+                "properties": [{"id": "custom.width", "value": 100}]
+              }
+            ]
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 15},
+          "id": 21,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false},
+            "showHeader": true,
+            "sortBy": [{"desc": true, "displayName": "Count"}]
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "topk(20, sum by (objectRef_resource, verb) (count_over_time({job=\"kube-apiserver-audit\"} | json | user_username=~\"system:serviceaccount:${namespace}:.*\" [$__range])))",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Top Resources Accessed",
+          "transformations": [
+            {
+              "id": "reduce",
+              "options": {"reducers": ["sum"]}
+            },
+            {
+              "id": "sortBy",
+              "options": {"fields": {}, "sort": [{"desc": true, "field": "Total"}]}
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "bars",
+                "fillOpacity": 100,
+                "gradientMode": "none",
+                "hideFrom": {"legend": false, "tooltip": false, "viz": false},
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {"type": "linear"},
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {"group": "A", "mode": "normal"},
+                "thresholdsStyle": {"mode": "off"}
+              },
+              "mappings": [],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 15},
+          "id": 22,
+          "options": {
+            "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "right", "showLegend": true},
+            "tooltip": {"mode": "multi", "sort": "desc"}
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "sum by (objectRef_namespace) (count_over_time({job=\"kube-apiserver-audit\"} | json | user_username=~\"system:serviceaccount:${namespace}:.*\" | objectRef_namespace != \"\" [$__interval]))",
+              "legendFormat": "{{`{{objectRef_namespace}}`}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Activity by Target Namespace",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 23},
+          "id": 30,
+          "panels": [],
+          "title": "Security Events",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "bars",
+                "fillOpacity": 100,
+                "gradientMode": "none",
+                "hideFrom": {"legend": false, "tooltip": false, "viz": false},
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {"type": "linear"},
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {"group": "A", "mode": "normal"},
+                "thresholdsStyle": {"mode": "off"}
+              },
+              "mappings": [],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+          "id": 31,
+          "options": {
+            "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "right", "showLegend": true},
+            "tooltip": {"mode": "multi", "sort": "desc"}
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "sum by (user_username) (count_over_time({job=\"kube-apiserver-audit\"} | json | responseStatus_code = 403 [$__interval]))",
+              "legendFormat": "{{`{{user_username}}`}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Forbidden Requests by User",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "bars",
+                "fillOpacity": 100,
+                "gradientMode": "none",
+                "hideFrom": {"legend": false, "tooltip": false, "viz": false},
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {"type": "linear"},
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {"group": "A", "mode": "normal"},
+                "thresholdsStyle": {"mode": "off"}
+              },
+              "mappings": [],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+          "id": 32,
+          "options": {
+            "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "right", "showLegend": true},
+            "tooltip": {"mode": "multi", "sort": "desc"}
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "sum by (objectRef_resource) (count_over_time({job=\"kube-apiserver-audit\"} | json | verb=~\"delete|create|patch|update\" | objectRef_resource=~\"secrets|configmaps|serviceaccounts|roles|rolebindings|clusterroles|clusterrolebindings\" [$__interval]))",
+              "legendFormat": "{{`{{objectRef_resource}}`}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Sensitive Resource Modifications",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 32},
+          "id": 40,
+          "panels": [],
+          "title": "Audit Log Stream",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 33},
+          "id": 41,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": true,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "pluginVersion": "9.5.0",
+          "targets": [
+            {
+              "expr": "{job=\"kube-apiserver-audit\"} | json | user_username=~\"system:serviceaccount:${namespace}:.*\" | line_format \"{{`{{.verb}}`}} {{`{{.objectRef_resource}}`}}/{{`{{.objectRef_name}}`}} by {{`{{.user_username}}`}} [{{`{{.responseStatus_code}}`}}]\"",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Live Audit Log",
+          "type": "logs"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["k8s-iam-operator", "kubernetes", "audit", "security"],
+      "templating": {
+        "list": [
+          {
+            "current": {"selected": false, "text": "Loki", "value": "loki"},
+            "hide": 0,
+            "includeAll": false,
+            "label": "Loki Datasource",
+            "multi": false,
+            "name": "lokidatasource",
+            "options": [],
+            "query": "loki",
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "type": "datasource"
+          },
+          {
+            "allValue": ".*",
+            "current": {"selected": false, "text": "All", "value": "$__all"},
+            "datasource": {"type": "loki", "uid": "${lokidatasource}"},
+            "definition": "label_values({job=\"kube-apiserver-audit\"}, namespace)",
+            "hide": 0,
+            "includeAll": true,
+            "label": "Namespace",
+            "multi": false,
+            "name": "namespace",
+            "options": [],
+            "query": "label_values({job=\"kube-apiserver-audit\"}, namespace)",
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {"from": "now-1h", "to": "now"},
+      "timepicker": {},
+      "timezone": "",
+      "title": "K8s IAM Operator - User Activity Audit",
+      "uid": "k8s-iam-operator-audit",
+      "version": 1,
+      "weekStart": ""
+    }
+{{- end }}

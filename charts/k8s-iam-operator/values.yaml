@@ -165,8 +165,20 @@ prometheusRule:
   #   annotations:
   #     summary: "Custom alert triggered"
 
-# Grafana Dashboard ConfigMap
+# Grafana Dashboard ConfigMap (Operator Metrics)
 grafanaDashboard:
+  enabled: false
+  # Namespace to create the ConfigMap in (default: release namespace)
+  namespace: ""
+  # Additional labels for the ConfigMap
+  labels: {}
+  # Annotations for the ConfigMap
+  annotations: {}
+
+# Grafana Audit Dashboard ConfigMap (User Activity from K8s API Audit Logs)
+# Requires: Loki datasource with Kubernetes API server audit logs
+# See docs/audit.md for setup instructions
+grafanaAuditDashboard:
   enabled: false
   # Namespace to create the ConfigMap in (default: release namespace)
   namespace: ""
