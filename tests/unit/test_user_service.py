@@ -28,7 +28,7 @@ class TestUserServiceCreate:
 
         user_service.create_user(sample_user_body, sample_user_spec, "default")
 
-        mock_secret_repo.create_service_account_token.assert_called_once()
+        mock_secret_repo.ensure_service_account_token.assert_called_once()
 
     def test_create_user_enabled_creates_namespace(self, user_service, sample_user_body,
                                                     sample_user_spec, mock_ns_repo):
@@ -86,7 +86,7 @@ class TestUserServiceCreate:
 
         assert result["state"] == "ready"
         mock_ns_repo.ensure_exists.assert_called_once()
-        mock_secret_repo.create_service_account_token.assert_called_once()
+        mock_secret_repo.ensure_service_account_token.assert_called_once()
 
     def test_create_user_with_type_serviceaccount(self, user_service, mock_sa_repo,
                                                     mock_ns_repo, mock_secret_repo):
@@ -163,6 +163,28 @@ class TestUserServiceUpdate:
         user_service.update_user(body, spec, "default")
 
         mock_ns_repo.delete.assert_called_with("test-user")
+
+    def test_update_user_with_new_croles_updates_bindings(
+        self, user_service, sample_user_body, mock_secret_repo, rbac_service
+    ):
+        """Test that updating CRoles successfully updates role bindings.
+
+        This tests the fix for the issue where existing secrets would
+        cause updates to fail before reaching role binding updates.
+        """
+        # Add new CRoles to the spec
+        sample_user_body["spec"]["CRoles"].append({
+            "namespace": "openstack",
+            "clusterRole": "edit"
+        })
+        spec = sample_user_body["spec"]
+
+        result = user_service.update_user(sample_user_body, spec, "default")
+
+        # Should succeed (not throw ResourceAlreadyExistsError)
+        assert result["state"] == "ready"
+        # Secret should use idempotent ensure method
+        mock_secret_repo.ensure_service_account_token.assert_called_once()
 
 
 class TestUserServiceDelete:

@@ -76,8 +76,8 @@ class TestKubeconfigServiceCreate:
         """Test creating kubeconfig secret."""
         kubeconfig_service.create_kubeconfig_secret(sample_user)
 
-        mock_secret_repo.create_kubeconfig_secret.assert_called_once()
-        call_args = mock_secret_repo.create_kubeconfig_secret.call_args
+        mock_secret_repo.ensure_kubeconfig_secret.assert_called_once()
+        call_args = mock_secret_repo.ensure_kubeconfig_secret.call_args
 
         assert call_args[1]["name"] == "test-user-cluster-config"
         assert call_args[1]["namespace"] == "test-user"

@@ -142,12 +142,12 @@ class UserService:
         Args:
             user: The User object
         """
-        # Create SA token secret
-        self.secret_repo.create_service_account_token(
+        # Ensure SA token secret exists (idempotent for updates)
+        self.secret_repo.ensure_service_account_token(
             sa_name=user.service_account_name,
             namespace=user.namespace
         )
-        logger.info(f"Created SA token secret for '{user.name}'")
+        logger.info(f"Ensured SA token secret exists for '{user.name}'")
 
         # Create restricted permissions
         self.rbac_service.create_user_restricted_permissions(user)

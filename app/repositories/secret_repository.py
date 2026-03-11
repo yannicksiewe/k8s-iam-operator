@@ -126,6 +126,32 @@ class SecretRepository(BaseRepository):
         except ApiException as e:
             self.handle_api_exception(e, "create", "Secret", name, namespace)
 
+    def ensure_service_account_token(self, sa_name: str, namespace: str,
+                                      token_name: Optional[str] = None) -> client.V1Secret:
+        """Ensure a service account token secret exists.
+
+        Creates the secret if it doesn't exist, returns existing if it does.
+
+        Args:
+            sa_name: The service account name
+            namespace: The namespace
+            token_name: Optional custom name for the token secret
+
+        Returns:
+            The V1Secret object (existing or newly created)
+
+        Raises:
+            KubernetesAPIError: For API errors
+        """
+        name = token_name or f"{sa_name}-token"
+
+        # Check if it already exists
+        if self.exists(name, namespace):
+            return self.get(name, namespace)
+
+        # Create if it doesn't exist
+        return self.create_service_account_token(sa_name, namespace, token_name)
+
     def create_kubeconfig_secret(self, name: str, namespace: str,
                                   kubeconfig_data: str) -> client.V1Secret:
         """Create a kubeconfig secret.
@@ -149,6 +175,34 @@ class SecretRepository(BaseRepository):
             secret_type="Opaque",
             labels={"k8s-iam-operator/type": "kubeconfig"}
         )
+
+    def ensure_kubeconfig_secret(self, name: str, namespace: str,
+                                  kubeconfig_data: str) -> client.V1Secret:
+        """Ensure a kubeconfig secret exists, updating if necessary.
+
+        Creates the secret if it doesn't exist, updates if it does.
+
+        Args:
+            name: The secret name
+            namespace: The namespace
+            kubeconfig_data: Base64 encoded kubeconfig data
+
+        Returns:
+            The V1Secret object (existing or newly created)
+
+        Raises:
+            KubernetesAPIError: For API errors
+        """
+        if self.exists(name, namespace):
+            # Update the kubeconfig data
+            return self.update(
+                name=name,
+                namespace=namespace,
+                data={"kubeconfig": kubeconfig_data}
+            )
+
+        # Create if it doesn't exist
+        return self.create_kubeconfig_secret(name, namespace, kubeconfig_data)
 
     def update(self, name: str, namespace: str,
                data: Optional[Dict[str, str]] = None,

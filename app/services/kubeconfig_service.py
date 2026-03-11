@@ -114,9 +114,10 @@ class KubeconfigService:
             )
 
     def create_kubeconfig_secret(self, user: User) -> None:
-        """Create a kubeconfig secret for the user.
+        """Create or update a kubeconfig secret for the user.
 
         The secret is created in the user's dedicated namespace.
+        If the secret already exists, it will be updated.
 
         Args:
             user: The User object
@@ -130,14 +131,14 @@ class KubeconfigService:
                 kubeconfig.encode('utf-8')
             ).decode('utf-8')
 
-            self.secret_repo.create_kubeconfig_secret(
+            self.secret_repo.ensure_kubeconfig_secret(
                 name=user.kubeconfig_secret_name,
                 namespace=user.user_namespace,
                 kubeconfig_data=kubeconfig_b64
             )
 
             logger.info(
-                f"Created kubeconfig secret '{user.kubeconfig_secret_name}' "
+                f"Ensured kubeconfig secret '{user.kubeconfig_secret_name}' "
                 f"in namespace '{user.user_namespace}'"
             )
 
