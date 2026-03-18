@@ -13,6 +13,7 @@ from app.utils.audit import configure_audit_logging
 from .user_handlers import create_user_handler, update_user_handler, delete_user_handler
 from .role_handlers import create_role_handler, delete_role_handler
 from .group_handlers import create_group_handler, update_group_handler, delete_group_handler
+from .namespace_handlers import namespace_created_handler
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +105,20 @@ def update_user_fn(body, spec, **kwargs):
 def delete_user_fn(body, spec, **kwargs):
     """Handle User deletion."""
     return delete_user_handler(body, spec, **kwargs)
+
+
+# ==================== Namespace Handlers ====================
+
+@kopf.on.create('', 'v1', 'namespaces')
+@with_tracing
+def namespace_created_fn(name, **kwargs):
+    """Handle Namespace creation.
+
+    When a namespace is created, reconcile any Users/Groups that have
+    role bindings targeting that namespace. This ensures RoleBindings
+    are restored when a namespace is deleted and recreated.
+    """
+    return namespace_created_handler(name, **kwargs)
 
 
 def main():
