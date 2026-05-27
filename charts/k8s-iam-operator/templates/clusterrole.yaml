@@ -20,10 +20,12 @@ rules:
     resources: ["users/status", "groups/status", "roles/status", "clusterroles/status"]
     verbs: ["get", "update", "patch"]
 
-  # Namespaces
+  # Namespaces. update+patch are required: kopf adds/removes its finalizer on
+  # managed namespace objects via PATCH; without them the namespace handler
+  # 403s, throttles, and the User status never reaches "ready".
   - apiGroups: [""]
     resources: ["namespaces"]
-    verbs: ["get", "list", "watch", "create", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
   # ServiceAccounts
   - apiGroups: [""]
