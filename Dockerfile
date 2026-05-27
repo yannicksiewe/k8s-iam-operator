@@ -1,5 +1,11 @@
-# Use an official Python runtime as the base image
-FROM python:3.9-alpine
+# Use an official Python runtime as the base image.
+# 3.12: 3.9 is EOL, and the urllib3 security pin (>=2.7.0) requires Python >=3.10.
+# CI already runs the test suite on 3.11, so 3.12 is well within support.
+FROM python:3.12-alpine
+
+# Patch OS packages to pull security fixes present in the base image
+# (e.g. musl-utils, zlib) before installing anything else.
+RUN apk --no-cache upgrade
 
 # Install build dependencies and libstdc++
 RUN apk add --no-cache --virtual .build-deps \

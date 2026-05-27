@@ -4,6 +4,11 @@ kubernetes>=28.0.0
 flask>=2.3.0
 gunicorn>=21.0.0
 
+# Security: pin urllib3 to a patched release (CVE-2026-44431/44432).
+# Pulled transitively by kubernetes/opentelemetry; pinned here to satisfy the
+# image vulnerability scan.
+urllib3>=2.7.0
+
 # Metrics
 prometheus_client>=0.17.0
 
