@@ -122,3 +122,45 @@ spec:
   CRoles:
     - namespace: default
       clusterRole: view
+
+---
+# OIDC User - federated identity (recommended for humans)
+# Requires the kube-apiserver to be configured with an OIDC provider.
+# The operator creates NO ServiceAccount, token, or kubeconfig: RBAC binds to
+# the IdP identity (kind: User). The user authenticates client-side, e.g.:
+#
+#   kubectl oidc-login setup --oidc-issuer-url=... --oidc-client-id=...
+#   kubectl config set-credentials oidc --exec-command=kubectl \
+#     --exec-arg=oidc-login --exec-arg=get-token ...
+#
+# Creates:
+# - Dedicated namespace "carol" (workspace) with quota + isolation
+# - RoleBinding(s) for subject {kind: User, name: carol@example.com}
+# - No SA / token / kubeconfig (short-lived tokens come from the IdP)
+apiVersion: k8sio.auth/v1
+kind: User
+metadata:
+  name: carol
+  namespace: iam
+spec:
+  type: oidc
+  oidcUser: carol@example.com   # MUST match the apiserver's token username
+                                # (incl. any --oidc-username-prefix)
+  namespaceConfig:
+    labels:
+      team: backend
+    quota:
+      cpu: "4"
+      memory: "8Gi"
+      pods: "20"
+    networkPolicy: isolated
+  CRoles:
+    - namespace: development
+      clusterRole: edit
+    - namespace: staging
+      clusterRole: view
+
+# NOTE: For group-based RBAC (binding OIDC group claims), use the Group CRD with
+# a name matching the apiserver's group claim — see examples/groups.yaml.
+# NOTE: Changing an existing user's `type` (e.g. serviceAccount -> oidc) is not
+# reconciled in-place; delete and recreate the User to switch identity models.

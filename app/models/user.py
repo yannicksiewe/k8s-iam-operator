@@ -9,6 +9,10 @@ class UserType(str, Enum):
     """Type of user identity."""
     HUMAN = "human"
     SERVICE_ACCOUNT = "serviceAccount"
+    # OIDC: identity is federated to the cluster's OIDC provider. RBAC binds to
+    # the IdP identity (kind: User); no ServiceAccount, token, or kubeconfig is
+    # created. Authentication is handled client-side (e.g. kubectl oidc-login).
+    OIDC = "oidc"
 
 
 class NetworkPolicyMode(str, Enum):
@@ -137,7 +141,12 @@ class UserSpec:
     # Target namespace for serviceAccount type
     target_namespace: Optional[str] = None
 
-    # Namespace configuration for human users
+    # OIDC identity (required for type: oidc) as it appears in tokens issued by
+    # the cluster's OIDC provider, e.g. "alice@example.com" (including any
+    # apiserver --oidc-username-prefix). RBAC binds to this as a User subject.
+    oidc_user: Optional[str] = None
+
+    # Namespace configuration for human/oidc users
     namespace_config: Optional[NamespaceConfig] = None
 
     # RBAC bindings
@@ -169,6 +178,7 @@ class UserSpec:
             user_type=user_type,
             enabled=enabled,
             target_namespace=data.get("targetNamespace"),
+            oidc_user=data.get("oidcUser"),
             namespace_config=namespace_config,
             cluster_roles=[ClusterRoleBinding.from_dict(cr) for cr in croles],
             roles=data.get("Roles", []),
@@ -184,6 +194,8 @@ class UserSpec:
         }
         if self.target_namespace:
             result["targetNamespace"] = self.target_namespace
+        if self.oidc_user:
+            result["oidcUser"] = self.oidc_user
         if self.namespace_config:
             result["namespaceConfig"] = self.namespace_config.to_dict()
         return result
@@ -193,14 +205,24 @@ class UserSpec:
         return [cr.namespace for cr in self.cluster_roles if cr.namespace]
 
     @property
+    def is_oidc(self) -> bool:
+        """Check if identity is federated via OIDC (no ServiceAccount/token/kubeconfig)."""
+        return self.user_type == UserType.OIDC
+
+    @property
     def is_human(self) -> bool:
-        """Check if this is a human user (needs namespace + kubeconfig)."""
+        """Check if this is a ServiceAccount-backed human user (token + kubeconfig)."""
         return self.user_type == UserType.HUMAN or self.enabled
 
     @property
     def is_service_account(self) -> bool:
-        """Check if this is a service account user."""
-        return not self.is_human
+        """Check if this is a workload service account user."""
+        return not self.is_human and not self.is_oidc
+
+    @property
+    def needs_namespace(self) -> bool:
+        """Whether this user gets a dedicated personal namespace (human + oidc)."""
+        return self.is_human or self.is_oidc
 
 
 @dataclass
@@ -244,6 +266,26 @@ class User:
             },
             "spec": self.spec.to_dict(),
         }
+
+    @property
+    def rbac_subject_kind(self) -> str:
+        """RBAC subject kind used for this user's bindings.
+
+        OIDC users bind to a User (the IdP identity); all others to their
+        ServiceAccount.
+        """
+        return "User" if self.spec.is_oidc else "ServiceAccount"
+
+    @property
+    def rbac_subject_name(self) -> str:
+        """RBAC subject name used for this user's bindings.
+
+        For OIDC users this is the IdP identity (e.g. an email); otherwise it is
+        the ServiceAccount name (same as the User CR name).
+        """
+        if self.spec.is_oidc:
+            return self.spec.oidc_user or ""
+        return self.name
 
     @property
     def service_account_name(self) -> str:

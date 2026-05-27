@@ -75,43 +75,47 @@ class UserService:
         validate_user_name(user.name)
         validate_user_spec(spec)
 
-        user_type = "human" if user.spec.is_human else "serviceAccount"
-        logger.info(
-            f"Creating {user_type} user '{user.name}' "
-            f"(type={user.spec.user_type.value})"
-        )
+        user_type = user.spec.user_type.value
+        logger.info(f"Creating {user_type} user '{user.name}'")
 
-        # Determine SA namespace
+        # SA namespace (unused for OIDC users, which have no ServiceAccount)
         sa_namespace = user.sa_namespace
 
-        # Create ServiceAccount
-        self.sa_repo.create(
-            name=user.service_account_name,
-            namespace=sa_namespace
-        )
-        logger.info(
-            f"Created ServiceAccount '{user.service_account_name}' "
-            f"in namespace '{sa_namespace}'"
-        )
-
-        if self.audit:
-            self.audit.log_create(
-                resource_type="ServiceAccount",
-                name=user.service_account_name,
-                namespace=sa_namespace,
-                details={
-                    "user": user.name,
-                    "user_type": user_type
-                }
-            )
-
-        # Set up resources based on user type
-        if user.spec.is_human:
-            self._setup_human_user(user)
+        if user.spec.is_oidc:
+            # OIDC user: identity is federated to the cluster's OIDC provider.
+            # No ServiceAccount, token, or kubeconfig is created — RBAC binds
+            # directly to the IdP identity. A dedicated namespace is still
+            # provisioned as a personal workspace.
+            self._setup_oidc_user(user)
         else:
-            logger.info(
-                f"ServiceAccount user '{user.name}' created in '{sa_namespace}'"
+            # Create ServiceAccount
+            self.sa_repo.create(
+                name=user.service_account_name,
+                namespace=sa_namespace
             )
+            logger.info(
+                f"Created ServiceAccount '{user.service_account_name}' "
+                f"in namespace '{sa_namespace}'"
+            )
+
+            if self.audit:
+                self.audit.log_create(
+                    resource_type="ServiceAccount",
+                    name=user.service_account_name,
+                    namespace=sa_namespace,
+                    details={
+                        "user": user.name,
+                        "user_type": user_type
+                    }
+                )
+
+            # Set up resources based on user type
+            if user.spec.is_human:
+                self._setup_human_user(user)
+            else:
+                logger.info(
+                    f"ServiceAccount user '{user.name}' created in '{sa_namespace}'"
+                )
 
         # Create role bindings
         self.rbac_service.create_user_role_bindings(user)
@@ -120,10 +124,14 @@ class UserService:
         status = {
             "state": "ready",
             "message": f"User '{user.name}' created successfully",
-            "serviceAccount": user.service_account_name,
-            "namespace": sa_namespace,
+            "namespace": user.user_namespace if user.spec.is_oidc else sa_namespace,
             "lastUpdated": datetime.now(timezone.utc).isoformat(),
         }
+
+        if user.spec.is_oidc:
+            status["oidcUser"] = user.spec.oidc_user
+        else:
+            status["serviceAccount"] = user.service_account_name
 
         if user.spec.is_human:
             status["kubeconfigSecret"] = user.kubeconfig_secret_name
@@ -152,7 +160,38 @@ class UserService:
         # Create restricted permissions
         self.rbac_service.create_user_restricted_permissions(user)
 
-        # Create/ensure user namespace exists with optional config
+        # Create/ensure dedicated namespace (+ optional quota and network policy)
+        self._provision_user_namespace(user)
+
+        # Generate kubeconfig
+        self.kubeconfig_service.create_kubeconfig_secret(user)
+
+    def _setup_oidc_user(self, user: User) -> None:
+        """Set up resources for an OIDC (federated identity) user.
+
+        Unlike human users, OIDC users get NO ServiceAccount, token secret, or
+        kubeconfig — authentication is delegated to the cluster's OIDC provider
+        and performed client-side (e.g. kubectl oidc-login). RBAC binds directly
+        to the IdP identity (kind: User). A dedicated namespace is still
+        provisioned as a personal workspace.
+
+        Args:
+            user: The User object
+        """
+        # Restrict namespace visibility to the user's allowed namespaces
+        self.rbac_service.create_user_restricted_permissions(user)
+
+        # Create/ensure dedicated namespace (+ optional quota and network policy)
+        self._provision_user_namespace(user)
+
+    def _provision_user_namespace(self, user: User) -> None:
+        """Create the user's dedicated namespace with optional quota/network policy.
+
+        Shared by human and OIDC users.
+
+        Args:
+            user: The User object
+        """
         ns_labels = {}
         ns_annotations = {}
 
@@ -164,7 +203,7 @@ class UserService:
         ns_labels.update({
             "app.kubernetes.io/managed-by": "k8s-iam-operator",
             "k8sio.auth/user": user.name,
-            "k8sio.auth/type": "human",
+            "k8sio.auth/type": user.spec.user_type.value,
         })
 
         self.ns_repo.ensure_exists(
@@ -217,9 +256,6 @@ class UserService:
                 f"({policy_mode.value}) to namespace '{user.user_namespace}'"
             )
 
-        # Generate kubeconfig
-        self.kubeconfig_service.create_kubeconfig_secret(user)
-
     def update_user(self, body: dict, spec: dict, namespace: str) -> dict:
         """Handle User CRD update.
 
@@ -237,29 +273,33 @@ class UserService:
         validate_user_name(user.name)
         validate_user_spec(spec)
 
-        user_type = "human" if user.spec.is_human else "serviceAccount"
+        user_type = user.spec.user_type.value
         logger.info(f"Updating {user_type} user '{user.name}'")
 
         sa_namespace = user.sa_namespace
 
-        # Update ServiceAccount (if needed)
-        try:
-            self.sa_repo.update(
-                name=user.service_account_name,
-                namespace=sa_namespace
-            )
-        except ResourceNotFoundError:
-            # SA was deleted, recreate
-            self.sa_repo.create(
-                name=user.service_account_name,
-                namespace=sa_namespace
-            )
-
-        # Handle type changes
-        if user.spec.is_human:
-            self._setup_human_user(user)
+        if user.spec.is_oidc:
+            # No ServiceAccount to manage; (re)provision namespace + RBAC.
+            self._setup_oidc_user(user)
         else:
-            self._cleanup_human_resources(user)
+            # Update ServiceAccount (if needed)
+            try:
+                self.sa_repo.update(
+                    name=user.service_account_name,
+                    namespace=sa_namespace
+                )
+            except ResourceNotFoundError:
+                # SA was deleted, recreate
+                self.sa_repo.create(
+                    name=user.service_account_name,
+                    namespace=sa_namespace
+                )
+
+            # Handle type changes
+            if user.spec.is_human:
+                self._setup_human_user(user)
+            else:
+                self._cleanup_human_resources(user)
 
         # Update role bindings
         self.rbac_service.update_user_role_bindings(user)
@@ -279,10 +319,14 @@ class UserService:
         status = {
             "state": "ready",
             "message": f"User '{user.name}' updated successfully",
-            "serviceAccount": user.service_account_name,
-            "namespace": sa_namespace,
+            "namespace": user.user_namespace if user.spec.is_oidc else sa_namespace,
             "lastUpdated": datetime.now(timezone.utc).isoformat(),
         }
+
+        if user.spec.is_oidc:
+            status["oidcUser"] = user.spec.oidc_user
+        else:
+            status["serviceAccount"] = user.service_account_name
 
         if user.spec.is_human:
             status["kubeconfigSecret"] = user.kubeconfig_secret_name
@@ -316,32 +360,33 @@ class UserService:
         """
         user = User.from_dict(body)
 
-        user_type = "human" if user.spec.is_human else "serviceAccount"
+        user_type = user.spec.user_type.value
         logger.info(f"Deleting {user_type} user '{user.name}'")
 
         sa_namespace = user.sa_namespace
 
-        # Delete ServiceAccount
-        try:
-            self.sa_repo.delete(
-                name=user.service_account_name,
-                namespace=sa_namespace
-            )
-            logger.info(f"Deleted ServiceAccount '{user.service_account_name}'")
-
-            if self.audit:
-                self.audit.log_delete(
-                    resource_type="ServiceAccount",
+        # Delete ServiceAccount (OIDC users have none)
+        if not user.spec.is_oidc:
+            try:
+                self.sa_repo.delete(
                     name=user.service_account_name,
                     namespace=sa_namespace
                 )
-        except ResourceNotFoundError:
-            logger.debug(
-                f"ServiceAccount '{user.service_account_name}' already deleted"
-            )
+                logger.info(f"Deleted ServiceAccount '{user.service_account_name}'")
 
-        # Delete user namespace if human user
-        if user.spec.is_human:
+                if self.audit:
+                    self.audit.log_delete(
+                        resource_type="ServiceAccount",
+                        name=user.service_account_name,
+                        namespace=sa_namespace
+                    )
+            except ResourceNotFoundError:
+                logger.debug(
+                    f"ServiceAccount '{user.service_account_name}' already deleted"
+                )
+
+        # Delete the dedicated namespace for human/oidc users
+        if user.spec.needs_namespace:
             try:
                 self.ns_repo.delete(user.user_namespace)
                 logger.info(f"Deleted user namespace '{user.user_namespace}'")

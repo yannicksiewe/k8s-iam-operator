@@ -35,6 +35,18 @@ class RBACService:
 
     # ==================== User RBAC ====================
 
+    def _user_subject(self, user: User):
+        """Build the primary RBAC subject for a user.
+
+        OIDC users bind to a `User` subject (the federated IdP identity); all
+        other users bind to their ServiceAccount.
+        """
+        if user.spec.is_oidc:
+            return self.rbac_repo.create_user_subject(user.spec.oidc_user)
+        return self.rbac_repo.create_service_account_subject(
+            user.name, user.namespace
+        )
+
     def create_user_role_bindings(self, user: User) -> None:
         """Create all role bindings for a user.
 
@@ -66,9 +78,7 @@ class RBACService:
             return
 
         # Build subjects list
-        subjects = [
-            self.rbac_repo.create_service_account_subject(user.name, user.namespace)
-        ]
+        subjects = [self._user_subject(user)]
         if cr_binding.group:
             subjects.append(
                 self.rbac_repo.create_group_subject(cr_binding.group)
@@ -106,7 +116,7 @@ class RBACService:
             logger.warning(f"Role '{role_name}' does not exist in namespace '{user.namespace}'")
             return
 
-        subject = self.rbac_repo.create_service_account_subject(user.name, user.namespace)
+        subject = self._user_subject(user)
         role_ref = self.rbac_repo.create_role_ref(role_name)
 
         self.rbac_repo.create_or_update_role_binding(
@@ -147,8 +157,8 @@ class RBACService:
 
         # Find and delete stale bindings
         bindings = self.rbac_repo.find_bindings_for_subject(
-            subject_name=user.name,
-            subject_kind="ServiceAccount"
+            subject_name=user.rbac_subject_name,
+            subject_kind=user.rbac_subject_kind
         )
 
         for binding in bindings:
@@ -183,8 +193,8 @@ class RBACService:
         """
         # Delete namespaced RoleBindings
         bindings = self.rbac_repo.find_bindings_for_subject(
-            subject_name=user.name,
-            subject_kind="ServiceAccount"
+            subject_name=user.rbac_subject_name,
+            subject_kind=user.rbac_subject_kind
         )
         for binding in bindings:
             self._delete_role_binding(
@@ -194,8 +204,8 @@ class RBACService:
 
         # Delete ClusterRoleBindings
         crb_bindings = self.rbac_repo.find_cluster_role_bindings_for_subject(
-            subject_name=user.name,
-            subject_kind="ServiceAccount"
+            subject_name=user.rbac_subject_name,
+            subject_kind=user.rbac_subject_kind
         )
         for binding in crb_bindings:
             self._delete_cluster_role_binding(binding.metadata.name)
@@ -246,7 +256,7 @@ class RBACService:
 
         # Create ClusterRoleBinding
         role_ref = self.rbac_repo.create_cluster_role_ref(user.restricted_role_name)
-        subject = self.rbac_repo.create_service_account_subject(user.name, user.namespace)
+        subject = self._user_subject(user)
 
         self.rbac_repo.create_or_update_cluster_role_binding(
             name=user.restricted_binding_name,

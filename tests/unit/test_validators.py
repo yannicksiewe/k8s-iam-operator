@@ -14,6 +14,8 @@ from app.validators import (
     validate_rbac_rule,
     validate_user_spec,
     validate_group_spec,
+    validate_user_type,
+    validate_oidc_user,
     VALID_VERBS,
     RESERVED_NAMESPACES,
 )
@@ -272,6 +274,45 @@ class TestValidateUserSpec:
         with pytest.raises(ValidationError) as exc_info:
             validate_user_spec({"enabled": "yes"})
         assert "must be a boolean" in exc_info.value.message
+
+    def test_valid_oidc_spec(self):
+        """Test a valid oidc user spec."""
+        spec = {
+            "type": "oidc",
+            "oidcUser": "carol@example.com",
+            "CRoles": [{"namespace": "dev", "clusterRole": "edit"}],
+        }
+        result = validate_user_spec(spec)
+        assert result["type"] == "oidc"
+        assert result["oidcUser"] == "carol@example.com"
+
+    def test_oidc_requires_oidc_user(self):
+        """Test that type: oidc without oidcUser raises error."""
+        with pytest.raises(ValidationError) as exc_info:
+            validate_user_spec({"type": "oidc", "CRoles": [], "Roles": []})
+        assert "oidcUser is required" in exc_info.value.message
+
+
+class TestValidateUserType:
+    """Tests for validate_user_type and validate_oidc_user."""
+
+    def test_oidc_is_valid_type(self):
+        assert validate_user_type("oidc") == "oidc"
+
+    def test_invalid_type_raises(self):
+        with pytest.raises(ValidationError):
+            validate_user_type("robot")
+
+    def test_oidc_user_valid_email(self):
+        assert validate_oidc_user("carol@example.com") == "carol@example.com"
+
+    def test_oidc_user_empty_raises(self):
+        with pytest.raises(ValidationError):
+            validate_oidc_user("")
+
+    def test_oidc_user_whitespace_raises(self):
+        with pytest.raises(ValidationError):
+            validate_oidc_user("carol @example.com")
 
 
 class TestValidateGroupSpec:
