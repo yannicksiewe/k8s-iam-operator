@@ -44,6 +44,27 @@ class TestRBACServiceUserBindings:
 
         mock_rbac_repo.create_or_update_role_binding.assert_not_called()
 
+    def test_oidc_user_binds_to_user_subject(
+        self, rbac_service, mock_rbac_repo, mock_ns_repo
+    ):
+        """OIDC users bind RBAC to a User subject (the IdP identity), not an SA."""
+        mock_ns_repo.exists.return_value = True
+        mock_rbac_repo.cluster_role_exists.return_value = True
+
+        oidc_user = User.from_dict({
+            "metadata": {"name": "carol", "namespace": "iam"},
+            "spec": {
+                "type": "oidc",
+                "oidcUser": "carol@example.com",
+                "CRoles": [{"namespace": "dev", "clusterRole": "edit"}],
+            },
+        })
+
+        rbac_service.create_user_role_bindings(oidc_user)
+
+        mock_rbac_repo.create_user_subject.assert_called_with("carol@example.com")
+        mock_rbac_repo.create_service_account_subject.assert_not_called()
+
     def test_delete_user_role_bindings(self, rbac_service, sample_user,
                                         mock_rbac_repo):
         """Test deleting user role bindings."""

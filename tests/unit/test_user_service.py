@@ -103,6 +103,46 @@ class TestUserServiceCreate:
         mock_ns_repo.ensure_exists.assert_not_called()
         mock_secret_repo.create_service_account_token.assert_not_called()
 
+    def test_create_oidc_user_skips_sa_token_kubeconfig(
+        self, user_service, mock_sa_repo, mock_secret_repo, mock_ns_repo
+    ):
+        """OIDC users get a namespace but no SA, token, or kubeconfig."""
+        body = {
+            "metadata": {"name": "carol", "namespace": "iam"},
+            "spec": {
+                "type": "oidc",
+                "oidcUser": "carol@example.com",
+                "CRoles": [{"namespace": "dev", "clusterRole": "edit"}],
+                "Roles": [],
+            },
+        }
+        result = user_service.create_user(body, body["spec"], "iam")
+
+        assert result["state"] == "ready"
+        assert result["oidcUser"] == "carol@example.com"
+        assert "serviceAccount" not in result
+        assert "kubeconfigSecret" not in result
+        # No ServiceAccount, no token secret created
+        mock_sa_repo.create.assert_not_called()
+        mock_secret_repo.ensure_service_account_token.assert_not_called()
+        # But the dedicated namespace is still provisioned
+        mock_ns_repo.ensure_exists.assert_called_once()
+
+    def test_delete_oidc_user_skips_sa_delete(
+        self, user_service, mock_sa_repo, mock_ns_repo
+    ):
+        """Deleting an OIDC user removes namespace + RBAC but no SA."""
+        body = {
+            "metadata": {"name": "carol", "namespace": "iam"},
+            "spec": {"type": "oidc", "oidcUser": "carol@example.com",
+                     "CRoles": [], "Roles": []},
+        }
+        result = user_service.delete_user(body, body["spec"], "iam")
+
+        assert result["state"] == "deleted"
+        mock_sa_repo.delete.assert_not_called()
+        mock_ns_repo.delete.assert_called_with("carol")
+
     def test_create_user_with_target_namespace(self, user_service, mock_sa_repo):
         """Test creating SA user with targetNamespace."""
         body = {

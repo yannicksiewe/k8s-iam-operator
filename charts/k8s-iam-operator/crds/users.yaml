@@ -18,45 +18,163 @@ spec:
               description: The specification of the user.
               type: object
               properties:
+                type:
+                  description: |
+                    Type of user:
+                    - human: Creates SA + dedicated namespace + kubeconfig (SA token) for interactive access
+                    - serviceAccount: Creates SA in targetNamespace for workload identity
+                    - oidc: Federated identity. Binds RBAC to the IdP identity (oidcUser);
+                      no SA/token/kubeconfig. Auth is client-side (e.g. kubectl oidc-login).
+                  type: string
+                  enum:
+                    - human
+                    - serviceAccount
+                    - oidc
+                  default: serviceAccount
+                oidcUser:
+                  description: |
+                    For oidc type (required): the username as it appears in tokens
+                    issued by the cluster's OIDC provider (e.g. "alice@example.com"),
+                    including any apiserver --oidc-username-prefix. RBAC binds to this
+                    as a User subject.
+                  type: string
+                  minLength: 1
                 enabled:
-                  description: Whether to create user namespace and kubeconfig
+                  description: |
+                    (Deprecated) Use 'type: human' instead.
+                    When true, creates namespace and kubeconfig (same as type: human).
                   type: boolean
                   default: false
+                targetNamespace:
+                  description: |
+                    For serviceAccount type: namespace where the SA will be created.
+                    If not specified, uses the same namespace as the User CR.
+                  type: string
+                  minLength: 1
+                namespaceConfig:
+                  description: Configuration for human/oidc user's dedicated namespace.
+                  type: object
+                  properties:
+                    labels:
+                      description: Labels to apply to the user's namespace.
+                      type: object
+                      additionalProperties:
+                        type: string
+                    annotations:
+                      description: Annotations to apply to the user's namespace.
+                      type: object
+                      additionalProperties:
+                        type: string
+                    quota:
+                      description: ResourceQuota for the user's namespace.
+                      type: object
+                      properties:
+                        cpu:
+                          description: CPU limit (e.g., "4", "2000m")
+                          type: string
+                        memory:
+                          description: Memory limit (e.g., "8Gi", "4096Mi")
+                          type: string
+                        pods:
+                          description: Maximum number of pods
+                          type: string
+                        services:
+                          description: Maximum number of services
+                          type: string
+                        persistentvolumeclaims:
+                          description: Maximum number of PVCs
+                          type: string
+                        secrets:
+                          description: Maximum number of secrets
+                          type: string
+                        configmaps:
+                          description: Maximum number of configmaps
+                          type: string
+                    networkPolicy:
+                      description: |
+                        Network policy mode for the namespace:
+                        - none: No network policy (default)
+                        - isolated: Deny all ingress except from same namespace
+                        - restricted: Deny all ingress/egress except DNS and same namespace
+                      type: string
+                      enum:
+                        - none
+                        - isolated
+                        - restricted
+                      default: none
                 CRoles:
-                  description: List of ClusterRole bindings for the user
+                  description: Cluster role bindings for this user.
                   type: array
                   items:
                     type: object
                     properties:
                       namespace:
-                        description: Namespace where the binding applies
+                        description: |
+                          Namespace to scope the binding. If omitted, creates
+                          ClusterRoleBinding (cluster-wide).
                         type: string
                         minLength: 1
-                        maxLength: 63
                       clusterRole:
-                        description: Name of the ClusterRole to bind
+                        description: Name of the ClusterRole to bind.
                         type: string
                         minLength: 1
-                        maxLength: 253
                       group:
-                        description: Optional group to include in the binding
+                        description: Optional group to associate with this binding.
                         type: string
                         minLength: 1
-                        maxLength: 63
                     required:
-                      - namespace
                       - clusterRole
                 Roles:
-                  description: List of Role names to bind in the user's namespace
+                  description: Role references for this user.
                   type: array
                   items:
                     type: string
                     minLength: 1
-                    maxLength: 253
+            status:
+              description: Status of the user resource.
+              type: object
+              properties:
+                state:
+                  description: Current state of the user.
+                  type: string
+                  enum:
+                    - pending
+                    - ready
+                    - error
+                message:
+                  description: Human-readable status message.
+                  type: string
+                serviceAccount:
+                  description: Name of the created ServiceAccount.
+                  type: string
+                oidcUser:
+                  description: The bound OIDC identity (for oidc users).
+                  type: string
+                namespace:
+                  description: Namespace where resources were created.
+                  type: string
+                kubeconfigSecret:
+                  description: Name of the kubeconfig secret (for human users).
+                  type: string
+                lastUpdated:
+                  description: Timestamp of last update.
+                  type: string
+                  format: date-time
+      subresources:
+        status: {}
       additionalPrinterColumns:
-        - name: Enabled
-          type: boolean
-          jsonPath: .spec.enabled
+        - name: Type
+          type: string
+          jsonPath: .spec.type
+          description: User type (human, serviceAccount, or oidc)
+        - name: State
+          type: string
+          jsonPath: .status.state
+          description: Current state
+        - name: Namespace
+          type: string
+          jsonPath: .status.namespace
+          description: Target namespace
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp

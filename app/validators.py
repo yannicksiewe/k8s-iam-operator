@@ -388,14 +388,49 @@ def validate_user_type(user_type: str) -> str:
     Raises:
         ValidationError: If validation fails
     """
-    valid_types = {"human", "serviceAccount"}
+    valid_types = {"human", "serviceAccount", "oidc"}
     if user_type not in valid_types:
         raise ValidationError(
             "type",
-            f"type must be one of: {', '.join(valid_types)}",
+            f"type must be one of: {', '.join(sorted(valid_types))}",
             user_type
         )
     return user_type
+
+
+def validate_oidc_user(value: str) -> str:
+    """Validate an OIDC identity string.
+
+    This is the username as it appears in tokens issued by the cluster's OIDC
+    provider (e.g. an email such as "alice@example.com", or an "issuer#subject"
+    string), including any apiserver --oidc-username-prefix. It is not a DNS
+    label, so we only enforce non-emptiness, a length bound, and no whitespace.
+
+    Args:
+        value: The OIDC identity string
+
+    Returns:
+        The validated identity string
+
+    Raises:
+        ValidationError: If validation fails
+    """
+    if not value or not value.strip():
+        raise ValidationError("oidcUser", "oidcUser cannot be empty")
+
+    if len(value) > DNS_NAME_MAX_LENGTH:
+        raise ValidationError(
+            "oidcUser",
+            f"oidcUser must be at most {DNS_NAME_MAX_LENGTH} characters",
+            value
+        )
+
+    if any(c.isspace() for c in value):
+        raise ValidationError(
+            "oidcUser", "oidcUser must not contain whitespace", value
+        )
+
+    return value
 
 
 def validate_resource_quantity(value: str, field_name: str) -> str:
@@ -547,6 +582,15 @@ def validate_user_spec(spec: dict) -> dict:
     user_type = spec.get("type")
     if user_type is not None:
         validated["type"] = validate_user_type(user_type)
+
+    # Validate OIDC identity (required for type: oidc)
+    oidc_user = spec.get("oidcUser")
+    if oidc_user is not None:
+        validated["oidcUser"] = validate_oidc_user(oidc_user)
+    if user_type == "oidc" and not oidc_user:
+        raise ValidationError(
+            "oidcUser", "oidcUser is required when type is 'oidc'"
+        )
 
     # Validate enabled flag (legacy, deprecated)
     enabled = spec.get("enabled", False)

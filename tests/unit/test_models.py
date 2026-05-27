@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.models.user import User, UserSpec, ClusterRoleBinding
+from app.models.user import User, UserSpec, ClusterRoleBinding, UserType
 from app.models.group import Group, GroupSpec
 from app.models.role import Role, ClusterRole, RoleSpec, PolicyRule
 
@@ -96,6 +96,52 @@ class TestUserSpec:
         )
         namespaces = spec.get_namespaces()
         assert set(namespaces) == {"dev", "staging"}
+
+    def test_from_dict_oidc(self):
+        """Test parsing an OIDC user spec."""
+        spec = UserSpec.from_dict({
+            "type": "oidc",
+            "oidcUser": "carol@example.com",
+            "CRoles": [{"namespace": "dev", "clusterRole": "edit"}],
+        })
+        assert spec.user_type == UserType.OIDC
+        assert spec.is_oidc is True
+        assert spec.is_human is False
+        assert spec.is_service_account is False
+        assert spec.needs_namespace is True
+        assert spec.oidc_user == "carol@example.com"
+
+    def test_to_dict_oidc_includes_oidc_user(self):
+        """Test that oidcUser round-trips through to_dict."""
+        spec = UserSpec(user_type=UserType.OIDC, oidc_user="carol@example.com")
+        result = spec.to_dict()
+        assert result["type"] == "oidc"
+        assert result["oidcUser"] == "carol@example.com"
+
+    def test_types_are_mutually_exclusive(self):
+        """A serviceAccount user is neither human nor oidc."""
+        sa = UserSpec.from_dict({"type": "serviceAccount"})
+        assert (sa.is_service_account, sa.is_human, sa.is_oidc) == (True, False, False)
+
+
+class TestUserOIDCSubject:
+    """Tests for the RBAC subject helpers on the User model."""
+
+    def _user(self, spec_data):
+        return User.from_dict({
+            "metadata": {"name": "carol", "namespace": "iam"},
+            "spec": spec_data,
+        })
+
+    def test_oidc_user_binds_to_user_subject(self):
+        user = self._user({"type": "oidc", "oidcUser": "carol@example.com"})
+        assert user.rbac_subject_kind == "User"
+        assert user.rbac_subject_name == "carol@example.com"
+
+    def test_human_user_binds_to_service_account_subject(self):
+        user = self._user({"type": "human"})
+        assert user.rbac_subject_kind == "ServiceAccount"
+        assert user.rbac_subject_name == "carol"
 
 
 class TestUser:
