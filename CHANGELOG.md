@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.2.0](https://github.com/yannicksiewe/k8s-iam-operator/compare/v4.1.5...v4.2.0) (2026-05-27)
+
+### Features
+
+* **user:** add oidc user type for federated identity RBAC ([b3f32bc](https://github.com/yannicksiewe/k8s-iam-operator/commit/b3f32bc260776006854f6049ac0de82e04982639))
+
 ## [4.1.5](https://github.com/yannicksiewe/k8s-iam-operator/compare/v4.1.4...v4.1.5) (2026-03-18)
 
 ### Bug Fixes
