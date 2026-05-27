@@ -1,6 +1,10 @@
 # Core dependencies
-kopf>=1.36.0
-kubernetes>=28.0.0
+# Pinned (not >=): kopf 1.44.x / kubernetes 36.x regressed in-cluster auth
+# (kopf aborts startup with "Ran out of valid credentials" after a transient
+# connection error). kopf 1.38.0 + kubernetes 35.0.0 are the last known-good
+# pairing (shipped in v4.1.x). Unpinned ranges made builds non-reproducible.
+kopf==1.38.0
+kubernetes==35.0.0
 flask>=2.3.0
 gunicorn>=21.0.0
 
