@@ -117,17 +117,14 @@ plugins:
     - assets:
         - path: charts/k8s-iam-operator
           label: Helm Chart
-      successComment: |
-        :tada: This PR is included in version ${nextRelease.version} :tada:
-
-        The release is available on:
-        - [GitHub Release](${releases.filter(r => r.name === 'GitHub').pop().url})
-        - [Container Registry](https://quay.io/repository/yannick_siewe/k8s-iam-operator?tag=${nextRelease.version})
-
-      failComment: |
-        :x: The release from this PR failed.
-
-        Please check the [CI logs](${process.env.CI_URL || 'the CI system'}) for more details.
+      # PR/issue success+fail comments are disabled: the successComment template
+      # (`releases.filter(...).pop().url`) throws "Cannot read properties of
+      # undefined (reading 'url')" in the success step, which aborts the Release
+      # job AFTER the tag/release are created but BEFORE the image build+push
+      # step -> releases ship with no container image. Disabling the comments
+      # lets the job run to completion and publish the image.
+      successComment: false
+      failComment: false
 
 # Disable running release on CI for dry runs
 # Set to true in CI environment
